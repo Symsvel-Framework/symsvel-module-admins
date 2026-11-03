@@ -1,9 +1,9 @@
 {
     "manifests": {
-        "symsvel-framework/module-symsvel-module-admins": {
+        "symsvel-framework/module-admins": {
             "manifest": {
                 "bundles": {
-                    "SymSvel\\Module\\SymsvelModuleAdmins\\SymsvelModuleAdminsBundle": [
+                    "SymSvel\\Module\\Admins\\AdminsBundle": [
                         "all"
                     ]
                 },
@@ -12,12 +12,12 @@
                 }
             },
             "files": {
-                "config/routes/symsvel-module-admins.yaml": {
+                "config/routes/admins.yaml": {
                     "contents": [
-                        "symsvel-module-admins:",
+                        "admins:",
                         "    resource:",
-                        "        path: '@SymsvelModuleAdminsBundle/src/Controller/'",
-                        "        namespace: SymSvel\\Module\\SymsvelModuleAdmins\\Controller",
+                        "        path: '@AdminsBundle/src/Controller/'",
+                        "        namespace: SymSvel\\Module\\Admins\\Controller",
                         "    type: attribute",
                         ""
                     ],

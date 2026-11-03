@@ -1,6 +1,6 @@
 {
     "schema": 1,
-    "name": "SymsvelModuleAdmins",
+    "name": "Admins",
     "dependencies": {},
     "tables": [],
     "components": {

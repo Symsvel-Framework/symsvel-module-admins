@@ -1,6 +1,6 @@
 {
-    "name": "symsvel-framework/module-symsvel-module-admins",
-    "description": "SymSvel module SymsvelModuleAdmins",
+    "name": "symsvel-framework/module-admins",
+    "description": "SymSvel module Admins",
     "type": "symfony-bundle",
     "license": "proprietary",
     "require": {
@@ -9,12 +9,12 @@
     },
     "autoload": {
         "psr-4": {
-            "SymSvel\\Module\\SymsvelModuleAdmins\\": "back/src/"
+            "SymSvel\\Module\\Admins\\": "back/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "SymSvel\\Module\\SymsvelModuleAdmins\\Tests\\": "back/tests/"
+            "SymSvel\\Module\\Admins\\Tests\\": "back/tests/"
         }
     },
     "require-dev": {
