@@ -1,0 +1,30 @@
+{
+    "manifests": {
+        "symsvel-framework/module-symsvel-module-admins": {
+            "manifest": {
+                "bundles": {
+                    "SymSvel\\Module\\SymsvelModuleAdmins\\SymsvelModuleAdminsBundle": [
+                        "all"
+                    ]
+                },
+                "copy-from-recipe": {
+                    "config/": "%CONFIG_DIR%/"
+                }
+            },
+            "files": {
+                "config/routes/symsvel-module-admins.yaml": {
+                    "contents": [
+                        "symsvel-module-admins:",
+                        "    resource:",
+                        "        path: '@SymsvelModuleAdminsBundle/src/Controller/'",
+                        "        namespace: SymSvel\\Module\\SymsvelModuleAdmins\\Controller",
+                        "    type: attribute",
+                        ""
+                    ],
+                    "executable": false
+                }
+            },
+            "ref": "REPLACE_WITH_RECIPE_COMMIT_SHA"
+        }
+    }
+}

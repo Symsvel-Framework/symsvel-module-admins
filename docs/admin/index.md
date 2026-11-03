@@ -1,0 +1,3 @@
+# SymsvelModuleAdmins
+
+Documentation admin.
