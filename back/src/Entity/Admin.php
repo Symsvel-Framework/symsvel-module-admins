@@ -23,6 +23,9 @@ class Admin
     #[ORM\Column(name: 'password_hash', length: 255)]
     private string $passwordHash;
 
+    #[ORM\Column(name: 'role_code', length: 100)]
+    private string $roleCode = 'ROLE_DEV';
+
     #[ORM\Column(options: ['default' => true])]
     private bool $enabled = true;
 
@@ -46,6 +49,7 @@ class Admin
     public function getId(): ?int { return $this->id; }
     public function getEmail(): string { return $this->email; }
     public function getPasswordHash(): string { return $this->passwordHash; }
+    public function getRoleCode(): string { return $this->roleCode; }
     public function isEnabled(): bool { return $this->enabled; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 }
