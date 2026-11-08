@@ -17,6 +17,29 @@ final class InitialAdministratorProvisioner
     ) {
     }
 
+    /**
+     * Direct setup uses a fresh Argon2id salt on each attempt. Verify the submitted
+     * password when retrying instead of comparing newly generated hash strings.
+     */
+    public function provisionFromPlaintext(string $email, string $password): void
+    {
+        $email = trim($email);
+        $existing = $this->admins->findOneBy(['email' => $email]);
+        if ($existing !== null) {
+            if ($existing->getRoleCode() !== 'ROLE_DEV'
+                || !$existing->isEnabled()
+                || !password_verify($password, $existing->getPasswordHash())
+                || $this->admins->count([]) !== 1) {
+                throw new \RuntimeException('Existing administrator does not match initial setup credentials.');
+            }
+            return;
+        }
+        if ($this->admins->count([]) > 0) {
+            throw new \RuntimeException('Initial administrator already exists.');
+        }
+        $this->provision($email, password_hash($password, PASSWORD_ARGON2ID), 'ROLE_DEV');
+    }
+
     public function provision(string $email, string $passwordHash, string $roleCode): void
     {
         if ($roleCode !== 'ROLE_DEV') {
