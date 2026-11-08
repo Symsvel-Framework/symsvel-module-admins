@@ -57,7 +57,7 @@ final class ProvisionInitialAdminFromStdinCommand extends Command
                 || str_contains($password, "\0")) {
                 throw new \RuntimeException('Invalid administrator credentials.');
             }
-            $this->provisioner->provision(trim($email), password_hash($password, PASSWORD_ARGON2ID), 'ROLE_DEV');
+            $this->provisioner->provisionFromPlaintext(trim($email), $password);
             $output->writeln('<info>Initial administrator provisioned.</info>');
 
             return Command::SUCCESS;
