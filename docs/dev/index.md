@@ -11,3 +11,5 @@ La commande directe n'est pas encore raccordée au Wizard ; ne pas considérer l
 La commande directe est explicitement enregistrée dans `AdminsBundle::loadExtension`, car ce bundle n'utilise pas l'auto-découverte globale des services. Un test vérifie le nom de commande exposé. La validation bout en bout depuis le Wizard reste en attente.
 
 Le test de garde vérifie que la commande refuse l'exécution en l'absence d'un état Setup valide, sans exposer le chemin local dans la sortie. Ce test ne remplace pas un test d'intégration avec Doctrine et une base migrée.
+
+Reprise de la phase administrateur : le provisionnement direct accepte uniquement un compte `ROLE_DEV` actif déjà créé avec le même e-mail, un mot de passe vérifié par `password_verify` et aucun autre administrateur en base. Le sel Argon2id changeant à chaque calcul, la comparaison de chaînes de hash ne convient pas pour cette reprise. Le provisionnement historique à partir du hash préparé reste inchangé pendant la migration.
