@@ -13,3 +13,5 @@ La commande directe est explicitement enregistrée dans `AdminsBundle::loadExten
 Le test de garde vérifie que la commande refuse l'exécution en l'absence d'un état Setup valide, sans exposer le chemin local dans la sortie. Ce test ne remplace pas un test d'intégration avec Doctrine et une base migrée.
 
 Reprise de la phase administrateur : le provisionnement direct accepte uniquement un compte `ROLE_DEV` actif déjà créé avec le même e-mail, un mot de passe vérifié par `password_verify` et aucun autre administrateur en base. Le sel Argon2id changeant à chaque calcul, la comparaison de chaînes de hash ne convient pas pour cette reprise. Le provisionnement historique à partir du hash préparé reste inchangé pendant la migration.
+
+Tests unitaires du provisionnement direct : création initiale, reprise avec mot de passe identique sans réécriture du hash, refus d'un autre mot de passe, refus si plusieurs administrateurs existent et refus de créer un deuxième compte. `AdminRepository` reste un dépôt Doctrine standard, désormais non final pour permettre son double de test sans base réelle ; les tests de migrations et d'intégration BDD demeurent nécessaires.
