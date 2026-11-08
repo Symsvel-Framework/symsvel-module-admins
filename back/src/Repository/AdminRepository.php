@@ -9,7 +9,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use SymSvel\Module\Admins\Entity\Admin;
 
 /** @extends ServiceEntityRepository<Admin> */
-final class AdminRepository extends ServiceEntityRepository
+class AdminRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
