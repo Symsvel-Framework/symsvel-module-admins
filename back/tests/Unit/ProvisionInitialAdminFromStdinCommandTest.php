@@ -5,19 +5,15 @@ declare(strict_types=1);
 namespace SymSvel\Module\Admins\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use SymSvel\Module\Admins\AdminsBundle;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminFromStdinCommand;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 final class ProvisionInitialAdminFromStdinCommandTest extends TestCase
 {
-    public function testCommandIsRegisteredByTheBundle(): void
+    public function testDirectBootstrapHasDedicatedCommandName(): void
     {
-        $bundle = new AdminsBundle();
-        $container = new ContainerBuilder();
-        $configurator = new ContainerConfigurator($container, new \Symfony\Component\DependencyInjection\Loader\PhpFileLoader($container, new \Symfony\Component\Config\FileLocator()), 'test.php', 'test');
-        $bundle->loadExtension([], $configurator, $container);
-        self::assertTrue($container->hasDefinition(ProvisionInitialAdminFromStdinCommand::class));
+        $attributes = (new \ReflectionClass(ProvisionInitialAdminFromStdinCommand::class))->getAttributes(AsCommand::class);
+        self::assertCount(1, $attributes);
+        self::assertSame('symsvel:admins:bootstrap:stdin', $attributes[0]->newInstance()->name);
     }
 }
