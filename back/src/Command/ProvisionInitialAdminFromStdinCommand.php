@@ -6,6 +6,7 @@ namespace SymSvel\Module\Admins\Command;
 
 use SymSvel\Module\Admins\Repository\AdminRepository;
 use SymSvel\Module\Admins\Setup\InitialAdministratorProvisioner;
+use SymSvel\Module\Admins\Setup\BootstrapPayload;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -36,17 +37,9 @@ final class ProvisionInitialAdminFromStdinCommand extends Command
                 throw new \RuntimeException('Administrator setup requires database_ready.');
             }
             $raw = stream_get_contents(STDIN, 8192);
-            if (!is_string($raw) || $raw === '' || strlen($raw) >= 8192) {
-                throw new \RuntimeException('Invalid administrator input.');
-            }
-            $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-            $email = $data['email'] ?? null;
-            $password = $data['password'] ?? null;
-            if (!is_string($email) || !is_string($password) || filter_var($email, FILTER_VALIDATE_EMAIL) === false
-                || strlen($password) < 12 || strlen($password) > 4096 || str_contains($password, "\0")) {
-                throw new \RuntimeException('Invalid administrator credentials.');
-            }
-            $email = trim($email);
+            $data = (new BootstrapPayload())->parse((string) $raw);
+            $email = $data['email'];
+            $password = $data['password'];
             $existing = $this->admins->findOneBy(['email' => $email]);
             if ($existing !== null) {
                 if ($existing->getRoleCode() !== 'ROLE_DEV' || !password_verify($password, $existing->getPasswordHash())) {
