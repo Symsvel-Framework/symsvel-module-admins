@@ -8,3 +8,7 @@ Module SymSvel (manifest schema 1).
 After database creation and native migrations, the local two-phase Setup Wizard uses `symsvel:admins:bootstrap:stdin` with a JSON payload (`email`, `password`) on standard input. The command requires `.symsvel/setup.json` in `database_ready` state, creates the sole `ROLE_DEV` administrator with an Argon2id password hash, and accepts a retry only with matching credentials. It never persists the plaintext password to a staging file. `symsvel:admins:bootstrap:verify` confirms that exactly one developer administrator exists before the static builds. Both commands are internal Tooling/Setup interfaces, not end-user CLI commands.
 
 The older `symsvel:admins:bootstrap` command remains available for the historical staged setup path. MySQL, MariaDB, SQLite, 2FA and i18n are not covered by this change. Automated tests, CI and XT crash tests are required before this work is considered complete.
+
+## CI (10/11/2026)
+
+`.github/workflows/qa.yml` exécute Composer et les tests du module sur le runner Docker ARM64 d'organisation (`self-hosted`, `linux`, `ARM64`, `symsvel`), avec PHP 8.4 préinstallé. La CI GitHub-hosted originale est conservée et désactivée dans `.github/workflows/qa.yml.stub`. Pour revenir aux runners GitHub, restaurer ce `.stub` sous le nom `qa.yml`. Les jobs locaux nécessitent que le Mac et Docker soient disponibles ; runner réservé aux contributions de confiance. Validation finale soumise à une CI verte et aux crash-tests XT applicables.
