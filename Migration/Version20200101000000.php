@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+namespace DoctrineMigrations;
+
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /** Immutable module migration compiled by SymSvel Tooling. */
-final class AdminsInitialMigration extends AbstractMigration
+final class Version20200101000000 extends AbstractMigration
 {
     public function up(Schema $schema): void
     {
