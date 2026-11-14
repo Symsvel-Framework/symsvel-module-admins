@@ -26,6 +26,7 @@ final class AdminIdentityProviderTest extends TestCase
 
         self::assertNull($provider->authenticate('app', 'admin@example.test', 'secret'));
         self::assertNull($provider->authenticate('bo', 'not-an-email', 'secret'));
+        self::assertNull($provider->authenticate('bo', str_repeat('a', 250).'@example.test', 'secret'));
         self::assertFalse($provider->isActive(new TokenSubject('app', 1)));
     }
 }
