@@ -29,3 +29,9 @@ La CI affiche les raisons des tests PHPUnit ignorés avec `--display-skipped` (d
 ## PHPUnit : découverte des tests (14/11/2026)
 
 La configuration `back/phpunit.xml.dist` utilise un unique testsuite pointant vers `back/tests` pour découvrir récursivement les tests Unit, Integration et Functional. Le bootstrap reste `../vendor/autoload.php`, chemin relatif au fichier XML situé dans `back/`. La commande Composer `composer test` continue d'utiliser `phpunit -c back/phpunit.xml.dist`. Cette correction simplifie la découverte et permet l'ajout de futurs tests sans modifier la liste des sous-dossiers ; elle ne constitue pas à elle seule une validation des tests. Vérifier l'exécution réelle en CI.
+
+## Adaptateur d'identité BO vers Auth (14/11/2026)
+
+`Auth/AdminIdentityProvider` implémente les deux contrats `PasswordPrincipal` et `PrincipalStatus` du module Auth. Il s'appuie exclusivement sur `AdminRepository` et l'entité `Admin` : recherche par email, vérification du hash Argon2id via `password_verify`, contrôle de `enabled` et de l'identifiant persistant. Seul le contexte `bo` est accepté ; une demande `app` est rejetée avant tout accès au repository. `isActive` recharge l'administrateur à chaque contrôle, pour que la désactivation soit immédiatement effective.
+
+Le module déclare la dépendance Composer `symsvel-framework/module-auth` et enregistre le fournisseur comme service autowiré. **Il n'installe pas d'alias global** `PasswordPrincipal` ou `PrincipalStatus` : la composition BO/App doit sélectionner les fournisseurs sans que l'adaptateur BO intercepte les identités App. Aucun endpoint ni firewall n'est ouvert. Les tests unitaires couvrent les contrats et le refus précoce ; des tests d'intégration ORM avec administrateurs persistés et les crash-tests locaux restent nécessaires. La CI de cette passe n'est pas encore validée.
