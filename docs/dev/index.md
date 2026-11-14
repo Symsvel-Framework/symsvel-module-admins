@@ -43,3 +43,7 @@ La CI Admins échouait avant les tests : son `composer.json` exigeait `symsvel-f
 ### Normalisation des identifiants de connexion (14/11/2026)
 
 Le fournisseur BO supprime les espaces périphériques de l'email **avant** validation, comme le constructeur de l'entité `Admin`, et refuse les emails dépassant 254 octets. Le test unitaire couvre ce rejet sans accès à Doctrine. Le contrôle des identifiants persistés et du mot de passe nécessite toujours un test d'intégration ORM ; la CI de ce correctif reste à confirmer.
+
+### Test d'intégration ORM du fournisseur BO (14/11/2026)
+
+`back/tests/Integration/AdminIdentityProviderDatabaseTest.php` utilise une base SQLite **en mémoire**, un vrai `EntityManager`, le schéma Doctrine de l'entité `Admin` et le vrai `AdminRepository`. Il vérifie la connexion avec un compte persisté et son hash Argon2id, le refus d'un mauvais mot de passe, l'isolation du contexte App, la normalisation des espaces de l'email et le refus d'un compte supprimé après rechargement. Il ne modifie aucune base de projet. Le test est ignoré si `pdo_sqlite` est absent ; son exécution effective et la CI restent à confirmer. Il ne remplace pas les crash-tests multi-SGBD ni les tests de compte désactivé, faute d'API de désactivation dans l'entité actuelle.
