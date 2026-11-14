@@ -8,6 +8,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Admins\Controller\AdminsPingController;
+use SymSvel\Module\Admins\Auth\AdminIdentityProvider;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminCommand;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminFromStdinCommand;
 use SymSvel\Module\Admins\Command\VerifyInitialAdminCommand;
@@ -21,7 +22,7 @@ final class AdminsBundle extends AbstractBundle
         $builder->register(AdminsPingController::class, AdminsPingController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
-        foreach ([AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class] as $service) {
+        foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class] as $service) {
             $builder->register($service, $service)->setAutowired(true)->setAutoconfigured(true);
         }
     }
