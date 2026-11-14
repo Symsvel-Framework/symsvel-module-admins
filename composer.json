@@ -9,7 +9,7 @@
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/orm": "^3.7",
         "doctrine/doctrine-migrations-bundle": "^4.0",
-        "symsvel-framework/module-auth": "^1.0"
+        "symsvel-framework/module-auth": "dev-dev"
     },
     "autoload": {
         "psr-4": {
@@ -37,5 +37,11 @@
         "branch-alias": {
             "dev-main": "1.0.x-dev"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://packages.xavier-tezza.fr"
+        }
+    ]
 }
