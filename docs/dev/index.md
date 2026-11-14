@@ -51,3 +51,7 @@ Le fournisseur BO supprime les espaces périphériques de l'email **avant** vali
 ### Correctif Doctrine ORM / PHP 8.4 (14/11/2026)
 
 Le premier lancement du test d'intégration a échoué à la construction de l'EntityManager : Doctrine demandait Symfony LazyGhost (`symfony/var-exporter`) ou l'activation des lazy objects natifs. Puisque SymSvel exige PHP 8.4, la configuration ORM **du test** active désormais `enableNativeLazyObjects(true)`. Aucun package supplémentaire n'est ajouté à l'exécution du framework. Correctif en attente de confirmation CI.
+
+## Composition des identités par contexte (14/11/2026)
+
+`AdminIdentityProvider` déclare désormais `ContextOwnedIdentity::authContext()` = `bo` et est enregistré sous le tag `symsvel.auth.identity_provider`. Le routeur Auth choisit ce fournisseur uniquement pour le BO ; aucun alias de contrat global n'est installé par Admins. CI de cette passe à confirmer.
