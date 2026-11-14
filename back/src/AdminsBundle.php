@@ -25,6 +25,7 @@ final class AdminsBundle extends AbstractBundle
         foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class] as $service) {
             $builder->register($service, $service)->setAutowired(true)->setAutoconfigured(true);
         }
+        $builder->getDefinition(AdminIdentityProvider::class)->addTag('symsvel.auth.identity_provider');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
