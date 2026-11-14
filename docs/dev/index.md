@@ -39,3 +39,7 @@ Le module déclare la dépendance Composer `symsvel-framework/module-auth` et en
 ### Résolution Composer d'Auth en développement (14/11/2026)
 
 La CI Admins échouait avant les tests : son `composer.json` exigeait `symsvel-framework/module-auth:^1.0` sans déclarer de dépôt privé, alors que la seule release Auth constatée sur GitHub est `0.1.0` et que les contrats récents sont développés sur la branche `dev`. Le manifeste Composer Admins déclare désormais le dépôt Satis privé `https://packages.xavier-tezza.fr` et exige explicitement `dev-dev`, sans abaisser globalement `minimum-stability`. **Précondition :** Satis doit indexer la branche `dev` du module Auth et le runner doit disposer de ses droits d'accès habituels. Cette configuration vise les tests sur la branche de développement ; avant stabilisation, remplacer la contrainte par une release publiée correspondant réellement aux contrats. La CI et les tests restent à confirmer après ce correctif.
+
+### Normalisation des identifiants de connexion (14/11/2026)
+
+Le fournisseur BO supprime les espaces périphériques de l'email **avant** validation, comme le constructeur de l'entité `Admin`, et refuse les emails dépassant 254 octets. Le test unitaire couvre ce rejet sans accès à Doctrine. Le contrôle des identifiants persistés et du mot de passe nécessite toujours un test d'intégration ORM ; la CI de ce correctif reste à confirmer.
