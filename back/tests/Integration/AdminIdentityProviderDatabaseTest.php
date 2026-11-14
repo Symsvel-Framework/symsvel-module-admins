@@ -27,6 +27,8 @@ final class AdminIdentityProviderDatabaseTest extends TestCase
             [dirname(__DIR__, 2).'/src/Entity'],
             true,
         );
+        // PHP 8.4 native lazy objects avoid an unnecessary Symfony LazyGhost dependency.
+        $configuration->enableNativeLazyObjects(true);
         $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $entityManager = new EntityManager($connection, $configuration);
 
