@@ -22,11 +22,12 @@ final readonly class AdminIdentityProvider implements PasswordPrincipal, Princip
 
     public function authenticate(string $context, string $identifier, string $password): ?TokenSubject
     {
-        if ($context !== 'bo' || filter_var($identifier, FILTER_VALIDATE_EMAIL) === false) {
+        $identifier = trim($identifier);
+        if ($context !== 'bo' || filter_var($identifier, FILTER_VALIDATE_EMAIL) === false || strlen($identifier) > 254) {
             return null;
         }
 
-        $admin = $this->admins->findOneBy(['email' => trim($identifier)]);
+        $admin = $this->admins->findOneBy(['email' => $identifier]);
         if (!$admin instanceof Admin || !$admin->isEnabled() || !password_verify($password, $admin->getPasswordHash())) {
             return null;
         }
