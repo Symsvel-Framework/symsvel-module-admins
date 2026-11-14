@@ -47,3 +47,7 @@ Le fournisseur BO supprime les espaces périphériques de l'email **avant** vali
 ### Test d'intégration ORM du fournisseur BO (14/11/2026)
 
 `back/tests/Integration/AdminIdentityProviderDatabaseTest.php` utilise une base SQLite **en mémoire**, un vrai `EntityManager`, le schéma Doctrine de l'entité `Admin` et le vrai `AdminRepository`. Il vérifie la connexion avec un compte persisté et son hash Argon2id, le refus d'un mauvais mot de passe, l'isolation du contexte App, la normalisation des espaces de l'email et le refus d'un compte supprimé après rechargement. Il ne modifie aucune base de projet. Le test est ignoré si `pdo_sqlite` est absent ; son exécution effective et la CI restent à confirmer. Il ne remplace pas les crash-tests multi-SGBD ni les tests de compte désactivé, faute d'API de désactivation dans l'entité actuelle.
+
+### Correctif Doctrine ORM / PHP 8.4 (14/11/2026)
+
+Le premier lancement du test d'intégration a échoué à la construction de l'EntityManager : Doctrine demandait Symfony LazyGhost (`symfony/var-exporter`) ou l'activation des lazy objects natifs. Puisque SymSvel exige PHP 8.4, la configuration ORM **du test** active désormais `enableNativeLazyObjects(true)`. Aucun package supplémentaire n'est ajouté à l'exécution du framework. Correctif en attente de confirmation CI.
