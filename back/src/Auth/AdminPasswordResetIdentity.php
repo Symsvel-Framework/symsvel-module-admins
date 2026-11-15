@@ -6,13 +6,14 @@ namespace SymSvel\Module\Admins\Auth;
 
 use Doctrine\DBAL\Connection;
 use SymSvel\Module\Auth\Identity\PasswordResetIdentity;
+use SymSvel\Module\Auth\Identity\EmailVerificationIdentity;
 use SymSvel\Module\Auth\Token\TokenSubject;
 
 /**
  * BO credential owner. Uses the host DBAL connection so a password update
  * can participate in Auth's reset-token and session-revocation transaction.
  */
-final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
+final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity, EmailVerificationIdentity
 {
     public function __construct(private Connection $connection)
     {
@@ -53,6 +54,33 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         );
 
         return is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
+    }
+
+    /**
+     * The mailbox fingerprint is matched against the account's current email.
+     * No unverified account is implicitly confirmed during bootstrap.
+     */
+    public function confirmEmail(TokenSubject $subject, string $emailHash, \DateTimeImmutable $now): bool
+    {
+        if ($subject->context !== 'bo' || !preg_match('/^[a-f0-9]{64}$/D', $emailHash)) {
+            return false;
+        }
+
+        $email = $this->connection->fetchOne(
+            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ?',
+            [$subject->id, true],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+        );
+        if (!is_string($email)
+            || !hash_equals(hash('sha256', strtolower(trim($email))), $emailHash)) {
+            return false;
+        }
+
+        return $this->connection->executeStatement(
+            'UPDATE symsvel_admins SET email_verified_at = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL',
+            [$now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), $subject->id, true, $email],
+            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING],
+        ) === 1;
     }
 
     public function replacePassword(TokenSubject $subject, string $newPasswordHash): bool
