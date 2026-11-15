@@ -105,3 +105,9 @@ Le parcours d'envoi, les endpoints et les crash-tests multi-SGBD restent à réa
 Le test `AdminPasswordResetIdentityRecoveryEmailTest` crée désormais sa table `symsvel_admins` dans SQLite en mémoire avant de vérifier le refus de récupération pour un sujet absent : l'adaptateur effectue légitimement une requête DBAL depuis l'ajout de `email_verified_at`. Le test de migration remplace `Table::hasPrimaryKey()` (absent de Doctrine DBAL 4) par `Table::getPrimaryKey() !== null`.
 
 Les tests restent isolés de toute base de projet et ne présupposent plus une table absente. Aucune migration publiée ni logique métier de vérification n'a été modifiée dans cette passe. CI et crash-tests locaux à confirmer.
+
+## Adresse BO éligible à la demande de confirmation (15/11/2026)
+
+`AdminPasswordResetIdentity` fournit désormais `EmailVerificationIdentity::pendingVerificationEmail()` : seul un administrateur actif, dans le contexte `bo`, dont `email_verified_at IS NULL`, peut faire parvenir son adresse actuellement enregistrée au service interne d'envoi Auth. Cela ne vérifie pas automatiquement l'adresse ; seul le parcours de consommation transactionnelle validé précédemment marque la confirmation. Le premier compte créé au Setup reste non vérifié tant qu'il n'a pas réellement consommé un jeton. Tests de refus du mauvais contexte, de la vérification déjà réalisée et du passage non vérifié/vérifié ajoutés.
+
+L'envoi est limité et déclenché par Auth avec Mails/Settings. Aucun contrôleur HTTP n'est ouvert, et la CI de cette passe reste à confirmer.
