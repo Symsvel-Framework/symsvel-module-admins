@@ -9,6 +9,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Admins\Controller\AdminsPingController;
 use SymSvel\Module\Admins\Auth\AdminIdentityProvider;
+use SymSvel\Module\Admins\Auth\AdminPasswordResetIdentity;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminCommand;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminFromStdinCommand;
 use SymSvel\Module\Admins\Command\VerifyInitialAdminCommand;
@@ -26,6 +27,9 @@ final class AdminsBundle extends AbstractBundle
             $builder->register($service, $service)->setAutowired(true)->setAutoconfigured(true);
         }
         $builder->getDefinition(AdminIdentityProvider::class)->addTag('symsvel.auth.identity_provider');
+        $builder->register(AdminPasswordResetIdentity::class, AdminPasswordResetIdentity::class)
+            ->setAutowired(true)
+            ->addTag('symsvel.auth.password_reset_identity');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
