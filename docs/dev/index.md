@@ -55,3 +55,7 @@ Le premier lancement du test d'intégration a échoué à la construction de l'E
 ## Composition des identités par contexte (14/11/2026)
 
 `AdminIdentityProvider` déclare désormais `ContextOwnedIdentity::authContext()` = `bo` et est enregistré sous le tag `symsvel.auth.identity_provider`. Le routeur Auth choisit ce fournisseur uniquement pour le BO ; aucun alias de contrat global n'est installé par Admins. CI de cette passe à confirmer.
+
+### Récupération de mot de passe BO (en cours)
+
+`AdminPasswordResetIdentity` implémente le contrat `PasswordResetIdentity` du module Auth. Il recherche uniquement les administrateurs actifs par adresse email et met à jour leur empreinte Argon2id via la connexion DBAL partagée, afin de participer à la transaction globale de récupération. Le provider est enregistré sous `symsvel.auth.password_reset_identity`. Aucun endpoint de récupération n'est exposé à ce stade ; tests et CI de cette modification à confirmer.
