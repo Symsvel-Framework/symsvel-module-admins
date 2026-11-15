@@ -32,6 +32,9 @@ class Admin
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(name: 'email_verified_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $emailVerifiedAt = null;
+
     public function __construct(string $email, string $passwordHash)
     {
         $email = trim($email);
@@ -48,6 +51,7 @@ class Admin
 
     public function getId(): ?int { return $this->id; }
     public function getEmail(): string { return $this->email; }
+    public function getEmailVerifiedAt(): ?\DateTimeImmutable { return $this->emailVerifiedAt; }
     public function getPasswordHash(): string { return $this->passwordHash; }
     public function getRoleCode(): string { return $this->roleCode; }
     public function isEnabled(): bool { return $this->enabled; }
