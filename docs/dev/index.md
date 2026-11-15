@@ -59,3 +59,9 @@ Le premier lancement du test d'intégration a échoué à la construction de l'E
 ### Récupération de mot de passe BO (en cours)
 
 `AdminPasswordResetIdentity` implémente le contrat `PasswordResetIdentity` du module Auth. Il recherche uniquement les administrateurs actifs par adresse email et met à jour leur empreinte Argon2id via la connexion DBAL partagée, afin de participer à la transaction globale de récupération. Le provider est enregistré sous `symsvel.auth.password_reset_identity`. Aucun endpoint de récupération n'est exposé à ce stade ; tests et CI de cette modification à confirmer.
+
+## Adresse de récupération et contrat Auth (15/11/2026)
+
+Le fournisseur `AdminPasswordResetIdentity` implémente désormais `PasswordResetIdentity::recoveryEmail(TokenSubject): ?string`. **Il renvoie intentionnellement `null` tant qu'aucun état persistant de vérification de boîte e-mail n'existe pour les comptes BO.** La présence de `email` et `enabled` ne prouve pas la propriété de la boîte. Aucun message de récupération n'est donc envoyé via cet adaptateur ; `PasswordResetDispatch` abandonne après contrôle anti-abus. Les contrats de recherche et de remplacement transactionnel de mot de passe restent inchangés.
+
+Ce comportement temporaire est volontairement fermé et testé dans `AdminPasswordResetIdentityRecoveryEmailTest`. Une évolution future devra définir et vérifier le processus de confirmation d'adresse auprès du propriétaire du compte, avec migration et tests correspondants, avant d'autoriser la délivrance des liens. Aucune route HTTP n'est ajoutée. CI et crash-tests locaux à confirmer.
