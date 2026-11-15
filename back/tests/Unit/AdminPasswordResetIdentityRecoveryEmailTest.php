@@ -17,10 +17,14 @@ final class AdminPasswordResetIdentityRecoveryEmailTest extends TestCase
             self::markTestSkipped('pdo_sqlite is required.');
         }
 
-        $provider = new AdminPasswordResetIdentity(DriverManager::getConnection([
+        $db = DriverManager::getConnection([
             'driver' => 'pdo_sqlite',
             'memory' => true,
-        ]));
+        ]);
+        $db->executeStatement(
+            'CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL)',
+        );
+        $provider = new AdminPasswordResetIdentity($db);
 
         self::assertSame('bo', $provider->authContext());
         self::assertNull($provider->recoveryEmail(new TokenSubject('bo', 1)));
