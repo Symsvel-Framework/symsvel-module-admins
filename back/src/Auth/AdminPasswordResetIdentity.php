@@ -39,6 +39,15 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         return $id === false ? null : new TokenSubject('bo', (int) $id);
     }
 
+    /**
+     * No verified mailbox state exists yet in this module. Fail closed until
+     * the account owner can assert and persist mailbox verification.
+     */
+    public function recoveryEmail(TokenSubject $subject): ?string
+    {
+        return null;
+    }
+
     public function replacePassword(TokenSubject $subject, string $newPasswordHash): bool
     {
         if ($subject->context !== 'bo' || password_get_info($newPasswordHash)['algoName'] !== 'argon2id') {
