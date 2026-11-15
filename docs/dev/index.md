@@ -91,3 +91,11 @@ La migration additive `Migration/Version20261115000001.php` ajoute `email_verifi
 Tests : `EmailVerificationMigrationTest` vérifie les mutations `Schema` et leur annulation sans toucher aux colonnes préexistantes ; `AdminPasswordResetIdentityVerifiedMailboxTest` couvre le refus sans vérification, l'isolation du contexte, le passage à un état vérifié simulé en base puis le refus du compte désactivé.
 
 **Limites du chantier :** la confirmation d'adresse par jeton à usage unique, la persistance sécurisée de la confirmation et la gestion d'un changement d'adresse ne sont **pas encore développées**. Aucun endpoint de demande de récupération n'est ouvert. La CI des nouveaux commits et les crash-tests locaux de la compilation/exécution multi-SGBD restent à confirmer. Ne jamais renseigner `email_verified_at` à partir d'une simple saisie d'adresse ou d'une authentification locale.
+
+## Confirmation de boîte mail BO : propriétaire du compte (15/11/2026)
+
+`AdminPasswordResetIdentity` implémente également `EmailVerificationIdentity`. Le module enregistre ce fournisseur sous `symsvel.auth.email_verification_identity`. `confirmEmail(subject, emailHash, now)` exige le contexte `bo`, un compte actif, et une empreinte SHA-256 valide correspondant à **l'adresse actuellement enregistrée**, normalisée en minuscules après `trim`. La mise à jour DBAL conditionnelle renseigne `email_verified_at` uniquement si l'adresse est restée identique et si le compte n'était pas déjà vérifié.
+
+Le service Auth réalise l'appel dans la transaction de consommation du jeton. Le Setup ne vérifie automatiquement aucune adresse ; le premier Admin reste non vérifié jusqu'à confirmation effective. `AdminEmailVerificationTest` couvre le contexte, la mauvaise empreinte, le succès unique, le compte désactivé et une ancienne adresse après changement.
+
+Le parcours d'envoi, les endpoints et les crash-tests multi-SGBD restent à réaliser. CI à confirmer.
