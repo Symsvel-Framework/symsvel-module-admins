@@ -99,3 +99,9 @@ Tests : `EmailVerificationMigrationTest` vérifie les mutations `Schema` et leur
 Le service Auth réalise l'appel dans la transaction de consommation du jeton. Le Setup ne vérifie automatiquement aucune adresse ; le premier Admin reste non vérifié jusqu'à confirmation effective. `AdminEmailVerificationTest` couvre le contexte, la mauvaise empreinte, le succès unique, le compte désactivé et une ancienne adresse après changement.
 
 Le parcours d'envoi, les endpoints et les crash-tests multi-SGBD restent à réaliser. CI à confirmer.
+
+## Correctif CI des tests de confirmation (15/11/2026)
+
+Le test `AdminPasswordResetIdentityRecoveryEmailTest` crée désormais sa table `symsvel_admins` dans SQLite en mémoire avant de vérifier le refus de récupération pour un sujet absent : l'adaptateur effectue légitimement une requête DBAL depuis l'ajout de `email_verified_at`. Le test de migration remplace `Table::hasPrimaryKey()` (absent de Doctrine DBAL 4) par `Table::getPrimaryKey() !== null`.
+
+Les tests restent isolés de toute base de projet et ne présupposent plus une table absente. Aucune migration publiée ni logique métier de vérification n'a été modifiée dans cette passe. CI et crash-tests locaux à confirmer.
