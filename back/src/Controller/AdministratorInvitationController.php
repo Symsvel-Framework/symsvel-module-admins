@@ -27,6 +27,31 @@ final readonly class AdministratorInvitationController
     ) {
     }
 
+    /** List pending BO invitations only after a dedicated ACL check. */
+    #[Route('/apibo/admins/invitations', name: 'symsvel_admins_invitation_list', methods: ['GET'], format: 'json')]
+    public function list(Request $request): JsonResponse
+    {
+        $actor = $this->actor($request, 'list');
+        if ($actor instanceof JsonResponse) {
+            return $actor;
+        }
+
+        $pending = $this->admins->findBy(
+            ['invitationPending' => true],
+            ['createdAt' => 'DESC'],
+            100,
+        );
+        return self::response([
+            'data' => array_map(static fn (Admin $admin): array => [
+                'id' => $admin->getId(),
+                'email' => $admin->getEmail(),
+                'role_code' => $admin->getRoleCode(),
+                'enabled' => $admin->isEnabled(),
+                'created_at' => $admin->getCreatedAt()->format(\DateTimeInterface::ATOM),
+            ], $pending),
+        ]);
+    }
+
     #[Route('/apibo/admins/invitations', name: 'symsvel_admins_invitation_create', methods: ['POST'], format: 'json')]
     public function create(Request $request): JsonResponse
     {

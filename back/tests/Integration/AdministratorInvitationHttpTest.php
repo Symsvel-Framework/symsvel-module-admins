@@ -76,6 +76,15 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertSame('invited@example.test', $messages[0]->getTo()[0]->getAddress());
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_admin_invitations'));
 
+        $listed = $controller->list(self::get('/apibo/admins/invitations', self::DEV_TOKEN));
+        self::assertSame(200, $listed->getStatusCode());
+        $rows = json_decode((string) $listed->getContent(), true, 8, JSON_THROW_ON_ERROR)['data'];
+        self::assertCount(1, $rows);
+        self::assertSame($id, $rows[0]['id']);
+        self::assertSame('invited@example.test', $rows[0]['email']);
+        self::assertSame('ROLE_ADMIN', $rows[0]['role_code']);
+        self::assertTrue($rows[0]['enabled']);
+
         $resend = $controller->resend(self::request(
             '/apibo/admins/'.$id.'/invitations/resend', self::DEV_TOKEN, ['locale' => 'en'],
         ), $id);
@@ -95,6 +104,8 @@ final class AdministratorInvitationHttpTest extends TestCase
     {
         [$controller, $db] = $this->fixture();
         $payload = ['email' => 'new@example.test', 'role_code' => 'ROLE_ADMIN', 'locale' => 'fr'];
+        self::assertSame(401, $controller->list(self::get('/apibo/admins/invitations', null))->getStatusCode());
+        self::assertSame(403, $controller->list(self::get('/apibo/admins/invitations', self::ADMIN_TOKEN))->getStatusCode());
         self::assertSame(401, $controller->create(self::request('/apibo/admins/invitations', null, $payload))->getStatusCode());
         self::assertSame(401, $controller->create(self::request('/apibo/admins/invitations', str_repeat('X', 43), $payload))->getStatusCode());
         self::assertSame(403, $controller->create(self::request('/apibo/admins/invitations', self::ADMIN_TOKEN, $payload))->getStatusCode());
@@ -202,6 +213,15 @@ final class AdministratorInvitationHttpTest extends TestCase
         $controller = new AdministratorInvitationController($auth, $admins, new AclAuthorizer($db), $manager);
 
         return [$controller, $db, $admins, $messages];
+    }
+
+    private static function get(string $path, ?string $bearer): Request
+    {
+        $headers = [];
+        if ($bearer !== null) {
+            $headers['HTTP_AUTHORIZATION'] = 'Bearer '.$bearer;
+        }
+        return Request::create($path, 'GET', [], [], [], $headers);
     }
 
     private static function request(string $path, ?string $bearer, array $data): Request
