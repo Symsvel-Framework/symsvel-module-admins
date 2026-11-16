@@ -12,6 +12,8 @@ use SymSvel\Module\Admins\Controller\AdministratorAccountController;
 use SymSvel\Module\Admins\Access\AdminBoAccessGate;
 use SymSvel\Module\Acls\Access\BoAccessGate;
 use SymSvel\Module\Admins\Controller\AdministratorInvitationController;
+use SymSvel\Module\Admins\Controller\AssignableAdministratorRolesController;
+use SymSvel\Module\Admins\Permission\AdminPermissionProvider;
 use SymSvel\Module\Admins\Auth\AdminIdentityProvider;
 use SymSvel\Module\Admins\Auth\AdminPasswordResetIdentity;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminCommand;
@@ -37,6 +39,10 @@ final class AdminsBundle extends AbstractBundle
         $builder->register(AdministratorInvitationController::class, AdministratorInvitationController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
+        $builder->register(AssignableAdministratorRolesController::class, AssignableAdministratorRolesController::class)
+            ->setAutowired(true)->addTag('controller.service_arguments');
+        $builder->register(AdminPermissionProvider::class, AdminPermissionProvider::class)
+            ->addTag('symsvel.acls.permission_provider');
         foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class, PendingAdministratorCreator::class, AdministratorInvitationManager::class] as $service) {
             $builder->register($service, $service)->setAutowired(true)->setAutoconfigured(true);
         }

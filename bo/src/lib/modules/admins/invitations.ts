@@ -21,6 +21,11 @@ export type PendingInvitation = {
 };
 export type PendingInvitationsResponse = { data: PendingInvitation[] };
 export type InvitationCreateResponse = { id: number; status: 'invited' };
+export type AssignableRole = { code: string; label: string };
+export type AssignableRolesResponse = { data: AssignableRole[] };
+export function roleIsSelectable(code: string, roles: readonly AssignableRole[]): boolean {
+  return isAssignableBoRole(code) && roles.some((role) => role.code === code);
+}
 
 export function isAssignableBoRole(role: string): boolean {
   return /^ROLE_[A-Z][A-Z0-9_]*$/.test(role) && role !== 'ROLE_DEV' && role !== 'ROLE_USER';
@@ -31,8 +36,9 @@ const copy = {
     title: 'Invitations administrateurs', dashboard: 'Tableau de bord',
     heading: 'Inviter un administrateur',
     intro: 'Un lien permettra au destinataire de créer son mot de passe et de confirmer son adresse.',
-    email: 'Adresse e-mail', role: 'Code du rôle',
-    roleHint: 'Saisissez un rôle existant dans Roles, par exemple ROLE_ADMIN.',
+    email: 'Adresse e-mail', role: 'Rôle',
+    roleHint: 'Seuls les rôles existants que vous avez le droit d’attribuer sont proposés.',
+    chooseRole: 'Choisir un rôle', noRoles: 'Aucun rôle attribuable. Vérifiez les rôles et vos ACL.',
     locale: 'Langue de l’invitation', fr: 'Français', en: 'Anglais',
     send: 'Envoyer l’invitation', sending: 'Envoi…',
     pending: 'Invitations en attente', reload: 'Actualiser', loading: 'Chargement…',
@@ -54,8 +60,9 @@ const copy = {
     title: 'Administrator invitations', dashboard: 'Dashboard',
     heading: 'Invite an administrator',
     intro: 'A link will let the recipient set a password and verify their email address.',
-    email: 'Email address', role: 'Role code',
-    roleHint: 'Enter an existing Roles code, for example ROLE_ADMIN.',
+    email: 'Email address', role: 'Role',
+    roleHint: 'Only existing roles you may assign are available.',
+    chooseRole: 'Choose a role', noRoles: 'No assignable roles. Check Roles and your ACLs.',
     locale: 'Invitation language', fr: 'French', en: 'English',
     send: 'Send invitation', sending: 'Sending…',
     pending: 'Pending invitations', reload: 'Refresh', loading: 'Loading…',

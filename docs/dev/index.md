@@ -229,3 +229,20 @@ modales, clavier, invitation et protection du compte développeur).
 
 Correctif QA du 16/11/2026 : suppression d'une variable dérivée inutilisée
 pour conserver le contrôle ESLint strict des routes Svelte assemblées.
+
+
+### Sélecteur de rôles réels dans les invitations (16/11/2026)
+
+Le BO n'accepte plus un code de rôle libre dans le formulaire d'invitation
+ou d'édition. `GET /apibo/admins/assignable-roles` consulte réellement
+`RoleRepository` et filtre les codes `ROLE_DEV` et `ROLE_USER` ainsi que
+les rôles que l'acteur ne peut pas attribuer avec l'ACL
+`roles.assign:ROLE_CODE`. L'accès exige `admins:create` ou
+`admins:update` et une identité BO authentifiée.
+
+L'écran Admins consomme ce résultat dans un `select` HTML natif, affiche
+les libellés réels et interdit l'envoi lorsqu'il n'y a aucun rôle autorisé.
+L'endpoint d'invitation et celui de modification **réévaluent** les droits
+indépendamment du sélecteur (TOCTOU et requêtes HTTP forgées). Le cache est
+interdit. Le provider du module déclare ses propres ressources/actions
+au catalogue ACLs. CI et CT XT requis.

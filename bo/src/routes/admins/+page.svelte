@@ -13,7 +13,8 @@
   import { boApi } from '../../../../api/session';
   import { getBoShell } from '../../../../bo/context';
   import {
-    invitationCopy, isAssignableBoRole, canMaintainBoAdmin,
+    invitationCopy, isAssignableBoRole, roleIsSelectable, canMaintainBoAdmin,
+    type AssignableRole, type AssignableRolesResponse,
     type PendingInvitation, type PendingInvitationsResponse, type InvitationCreateResponse,
     type BoAdminAccount, type BoAdminAccountsResponse
   } from '../../invitations';
@@ -33,6 +34,9 @@
   let deleting = $state<number | null>(null);
   let invitations = $state<PendingInvitation[]>([]);
   let accounts = $state<BoAdminAccount[]>([]);
+  let availableRoles = $state<AssignableRole[]>([]);
+  let rolesLoading = $state(false);
+  let rolesError = $state('');
   let currentId = $state<number | null>(null);
   let error = $state('');
   let listError = $state('');
@@ -136,9 +140,24 @@
     }
   }
 
+  async function loadRoles(): Promise<void> {
+    rolesLoading = true;
+    rolesError = '';
+    availableRoles = [];
+    try {
+      const response = await boApi<AssignableRolesResponse>('/apibo/admins/assignable-roles');
+      availableRoles = Array.isArray(response.data) ? response.data : [];
+    } catch (cause) {
+      rolesError = explain(cause);
+    } finally {
+      rolesLoading = false;
+    }
+  }
+
   onMount(() => {
     currentId = shell.identity?.id ?? null;
     void refresh();
+    void loadRoles();
   });
 
   function openInvite(): void {
@@ -147,6 +166,7 @@
     locale = language.toLowerCase().startsWith('fr') ? 'fr' : 'en';
     error = '';
     showInvite = true;
+    void loadRoles();
   }
 
   async function invite(event: SubmitEvent): Promise<void> {
@@ -154,7 +174,7 @@
     if (busy) return;
     error = '';
     message = '';
-    if (!isAssignableBoRole(role.trim())) { error = t.invalidRole; return; }
+    if (!roleIsSelectable(role, availableRoles)) { error = t.invalidRole; return; }
     busy = true;
     try {
       await boApi<InvitationCreateResponse>('/apibo/admins/invitations', {
@@ -197,6 +217,7 @@
     newEnabled = account.enabled;
     error = '';
     message = '';
+    void loadRoles();
   }
 
   async function updateAccount(): Promise<void> {
@@ -305,15 +326,25 @@
       <label for="new-admin-email">{t.email}</label>
       <input id="new-admin-email" type="email" bind:value={email} autocomplete="email" maxlength="254" required />
       <label for="new-admin-role">{t.role}</label>
-      <input id="new-admin-role" type="text" bind:value={role} placeholder="ROLE_ADMIN" maxlength="100" aria-describedby="role-help" required />
+      <select id="new-admin-role" bind:value={role} aria-describedby="role-help"
+        disabled={rolesLoading || availableRoles.length === 0} required>
+        <option value="" disabled>{t.chooseRole}</option>
+        {#each availableRoles as item (item.code)}
+          <option value={item.code}>{item.label} ({item.code})</option>
+        {/each}
+      </select>
       <small id="role-help">{t.roleHint}</small>
+      {#if rolesError}<Alert kind="error">{rolesError}</Alert>{/if}
+      {#if !rolesLoading && !rolesError && availableRoles.length === 0}
+        <Alert kind="info">{t.noRoles}</Alert>
+      {/if}
       <label for="invitation-locale">{t.locale}</label>
       <select id="invitation-locale" bind:value={locale}>
         <option value="fr">{t.fr}</option><option value="en">{t.en}</option>
       </select>
       <div class="modal-actions">
         <Button type="button" variant="secondary" onclick={() => showInvite = false}>{t.cancel}</Button>
-        <Button type="submit" disabled={busy}>{busy ? t.sending : t.send}</Button>
+        <Button type="submit" disabled={busy || rolesLoading || !roleIsSelectable(role, availableRoles)}>{busy ? t.sending : t.send}</Button>
       </div>
     </form>
   </Modal>
@@ -324,7 +355,14 @@
       {#if error}<Alert kind="error">{error}</Alert>{/if}
       <form class="modal-form" onsubmit={(event) => { event.preventDefault(); void updateAccount(); }}>
         <label for="edit-admin-role">{t.role}</label>
-        <input id="edit-admin-role" type="text" bind:value={newRole} maxlength="100" required />
+        <select id="edit-admin-role" bind:value={newRole} disabled={rolesLoading} required>
+          {#if !roleIsSelectable(newRole, availableRoles)}
+            <option value={newRole}>{newRole}</option>
+          {/if}
+          {#each availableRoles as item (item.code)}
+            <option value={item.code}>{item.label} ({item.code})</option>
+          {/each}
+        </select>
         <label for="edit-admin-enabled">{t.state}</label>
         <select id="edit-admin-enabled" bind:value={newEnabled}>
           <option value={true}>{t.active}</option>
