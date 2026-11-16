@@ -49,6 +49,17 @@ class Admin
         $this->createdAt = new \DateTimeImmutable();
     }
 
+    /**
+     * Trust the first developer's address only during the guarded local Setup bootstrap.
+     * This is not a general-purpose e-mail verification mechanism.
+     */
+    public function trustEmailFromLocalSetup(): void
+    {
+        if ($this->emailVerifiedAt === null) {
+            $this->emailVerifiedAt = new \DateTimeImmutable();
+        }
+    }
+
     public function getId(): ?int { return $this->id; }
     public function getEmail(): string { return $this->email; }
     public function getEmailVerifiedAt(): ?\DateTimeImmutable { return $this->emailVerifiedAt; }
