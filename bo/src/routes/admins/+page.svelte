@@ -89,7 +89,6 @@
       `${item.email} ${item.role_code}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     )
   ));
-  const selectedRows = $derived(activeTab === 'accounts' ? filteredAccounts : filteredInvitations);
   const visibleAccounts = $derived(filteredAccounts.slice((page - 1) * limit, page * limit));
   const visibleInvitations = $derived(filteredInvitations.slice((page - 1) * limit, page * limit));
 

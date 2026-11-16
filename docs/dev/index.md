@@ -225,3 +225,7 @@ contrat API paginé distinct si le plafond devient limitant.
 
 QA et crash-tests XT nécessaires (onglets, recherche, tri, pagination,
 modales, clavier, invitation et protection du compte développeur).
+
+
+Correctif QA du 16/11/2026 : suppression d'une variable dérivée inutilisée
+pour conserver le contrôle ESLint strict des routes Svelte assemblées.
