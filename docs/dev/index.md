@@ -170,3 +170,7 @@ Le manifeste et Composer déclarent la dépendance native à ACLs. La configurat
 ### Lecture des invitations en attente (16/11/2026)
 
 `GET /apibo/admins/invitations` retourne `{data: [{id, email, role_code, enabled, created_at}]}` pour les **100 invitations les plus récentes**, triées par date descendante. Ce parcours exige `admins:list` et un jeton BO authentifié : une simple autorisation de créer ou de renvoyer n'autorise pas la lecture des adresses. Les comptes activés n'apparaissent plus ; les comptes désactivés peuvent être affichés, mais le renvoi reste interdit. Les réponses sont `Cache-Control: no-store`. La limite est volontaire ; pagination et filtres seront traités seulement si le besoin est confirmé. Test HTTP de lecture, accès refusé et visibilité ajouté.
+
+### Interface d'invitation BO Svelte (16/11/2026)
+
+La page `/admins` du module remplace le placeholder de CT. Elle utilise `boApi()` pour la création, le renvoi et la lecture sécurisée des invitations ; `currentBo()` contrôle la session. Aucun traitement de token propre au module. Le rôle doit être fourni explicitement, puis vérifié par Roles et ACLs côté backend. Textes externalisés dans le fichier TypeScript `bo/src/lib/modules/admins/invitations.ts`, sélection FR/EN. La CI backend, même verte, ne suffit pas à valider le BO compilé ; crash-tests locaux et validation de l'utilisateur restent nécessaires.
