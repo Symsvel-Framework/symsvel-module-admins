@@ -24,3 +24,14 @@ describe('admins module', () => {
     expect(invitationCopy(null).send).toBe('Send invitation');
   });
 });
+
+import { boNavigation } from '../src/lib/modules/admins/navigation';
+
+describe('admins BO navigation declaration', () => {
+  it('links to the ACL-protected read-only endpoint', () => {
+    expect(boNavigation.path).toBe('/admins');
+    expect(boNavigation.probe).toBe('/apibo/admins');
+    expect(boNavigation.action).toBe('list');
+    expect(boNavigation.resource).toBe('admins');
+  });
+});

@@ -201,3 +201,7 @@ Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désor
 ### Tests du CRUD BO Admins (16/11/2026)
 
 `AdministratorAccountControllerTest` démarre Doctrine ORM et Auth DBAL sur SQLite en mémoire, puis vérifie `GET/PATCH/DELETE` avec un résultat `BoAccessGate` strict. Les cas `ROLE_DEV` et auto-modification restent bloqués côté serveur ; une modification du rôle et de l'état révoque les sessions, et la suppression conserve le développeur initial. Les refus de session/ACL retournent 401/403. L'absence de transactions imbriquées SQLite est vérifiée par cette intégration. CI et crash-test XT requis.
+
+### Déclaration de navigation BO (16/11/2026)
+
+Le module fournit `bo/src/lib/modules/admins/navigation.ts`, qui décrit sa page `/admins` avec libellés FR/EN et sa permission `admins:list`. Le dashboard du BO hôte importe les déclarations des modules effectivement installés ; il n'affiche cette entrée que si `GET /apibo/admins` réussit via `boApi`, ce qui vérifie le droit côté PHP avant toute navigation. Aucune route Symfony centrale ni règle d'accès Svelte parallèle n'est créée. Le test `bo/tests/admins.test.ts` valide la déclaration, et la CI de l'assemblage BO doit confirmer l'import. CT XT après mise à jour du BO et des modules.
