@@ -8,3 +8,12 @@ La page \`/admins\` présente les administrateurs, leur rôle, leur statut et le
 
 
 La liste complète des administrateurs est désormais intégrée à `/admins` : elle permet d'activer/désactiver un compte, de changer le rôle et de supprimer un autre administrateur après confirmation. Les protections sont appliquées au niveau de l'API, indépendamment des boutons de l'interface.
+
+
+## Coque BO partagée (16/11/2026)
+
+La page /admins conserve uniquement ses formulaires,
+tableaux et appels `boApi`. La session, la sidebar, la topbar et la
+navigation active sont gérées par le layout hôte de `symsvel-bo`.
+La route générée par Tooling reste inchangée et les ACL restent dans les
+contrôleurs PHP. Voir `symsvel-bo/docs/bo-ui.md`.
