@@ -30,7 +30,8 @@ final class AdminsBundle extends AbstractBundle
         $builder->register(AdminPasswordResetIdentity::class, AdminPasswordResetIdentity::class)
             ->setAutowired(true)
             ->addTag('symsvel.auth.password_reset_identity')
-            ->addTag('symsvel.auth.email_verification_identity');
+            ->addTag('symsvel.auth.email_verification_identity')
+            ->addTag('symsvel.auth.admin_invitation_identity');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
