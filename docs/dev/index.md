@@ -246,3 +246,12 @@ L'endpoint d'invitation et celui de modification **réévaluent** les droits
 indépendamment du sélecteur (TOCTOU et requêtes HTTP forgées). Le cache est
 interdit. Le provider du module déclare ses propres ressources/actions
 au catalogue ACLs. CI et CT XT requis.
+
+
+### Test du sélecteur de rôles attribuables (16/11/2026)
+
+`AssignableAdministratorRolesTest` utilise un vrai dépôt ORM Role et
+SQLite pour vérifier le refus sans identité, les rôles limités à
+`roles.assign:ROLE_EDITOR` pour un acteur ordinaire et la visibilité des
+rôles BO existants (hors DEV/USER) pour le développeur. Une API falsifiée
+ne suffit pas : l'endpoint de création réapplique sa validation ACL.
