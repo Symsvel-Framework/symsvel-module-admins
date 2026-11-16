@@ -205,3 +205,23 @@ Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désor
 ### Déclaration de navigation BO (16/11/2026)
 
 Le module fournit `bo/src/lib/modules/admins/navigation.ts`, qui décrit sa page `/admins` avec libellés FR/EN et sa permission `admins:list`. Le dashboard du BO hôte importe les déclarations des modules effectivement installés ; il n'affiche cette entrée que si `GET /apibo/admins` réussit via `boApi`, ce qui vérifie le droit côté PHP avant toute navigation. Aucune route Symfony centrale ni règle d'accès Svelte parallèle n'est créée. Le test `bo/tests/admins.test.ts` valide la déclaration, et la CI de l'assemblage BO doit confirmer l'import. CT XT après mise à jour du BO et des modules.
+
+
+## BO : onglets, modales et tableaux XCore (16/11/2026)
+
+L'écran Admins garde l'autorisation des endpoints existants. L'invitation
+initiale et l'édition d'un compte se font dans `Modal` du BO hôte. L'écran
+affiche deux onglets : comptes activés (hors invitations en attente) et
+invitations en attente. Les invitations gardent leur action de renvoi.
+Les comptes `ROLE_DEV` et le compte courant restent protégés ; le backend
+constitue l'autorité finale sur les ACL.
+
+Les deux listes utilisent le `DataTable` de l'hôte avec recherche, tri,
+page et taille de page 10/20/50/100, sur les données chargées de l'API.
+Les endpoints actuels restent limités à 200 comptes / 100 invitations :
+ce lot rétablit la pagination UI XCore **sans prétendre** fournir une
+pagination serveur pour les très grands volumes. Celle-ci demandera un
+contrat API paginé distinct si le plafond devient limitant.
+
+QA et crash-tests XT nécessaires (onglets, recherche, tri, pagination,
+modales, clavier, invitation et protection du compte développeur).
