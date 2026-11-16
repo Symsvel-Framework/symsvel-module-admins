@@ -8,6 +8,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Admins\Controller\AdminsPingController;
+use SymSvel\Module\Admins\Controller\AdministratorAccountController;
+use SymSvel\Module\Admins\Access\AdminBoAccessGate;
+use SymSvel\Module\Acls\Access\BoAccessGate;
 use SymSvel\Module\Admins\Controller\AdministratorInvitationController;
 use SymSvel\Module\Admins\Auth\AdminIdentityProvider;
 use SymSvel\Module\Admins\Auth\AdminPasswordResetIdentity;
@@ -26,6 +29,11 @@ final class AdminsBundle extends AbstractBundle
         $builder->register(AdminsPingController::class, AdminsPingController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
+        $builder->register(AdministratorAccountController::class, AdministratorAccountController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AdminBoAccessGate::class, AdminBoAccessGate::class)->setAutowired(true);
+        $builder->setAlias(BoAccessGate::class, AdminBoAccessGate::class);
         $builder->register(AdministratorInvitationController::class, AdministratorInvitationController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');

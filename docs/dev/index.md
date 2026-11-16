@@ -180,3 +180,12 @@ La page `/admins` du module remplace le placeholder de CT. Elle utilise `boApi()
 La CI Admins ajoute un **job indépendant `bo-integration`** sur le runner auto-hébergé. Il récupère le BO hôte en branche `dev`, reproduit les destinations de synchronisation de la route et du fichier TypeScript Admins (sans modifier Tooling), installe les dépendances et exécute `npm run format`, `npm run check`, `npm run lint`, `npm run build` et les tests unitaires Vitest avec Chromium.
 
 Ce job valide les imports `#lib`, les composants synchronisés et la compilation statique dans le BO réel. Le formatage s'effectue **uniquement dans la copie assemblée** pour suivre la convention CI du BO ; il ne modifie ni ne pousse les sources du module. Le chantier n'est pas clôturé par ce job : les appels HTTP sont simulés en tests et les crash-tests locaux utilisateur sont obligatoires. L'accès au BO privé doit être accordé au secret `SYMSVEL_READ_TOKEN`.
+
+## Gestion des comptes BO : CRUD sécurisé (16/11/2026)
+
+\`AdminBoAccessGate\` implémente le contrat partagé \`Acls\Access\BoAccessGate\` pour les modules BO. Il vérifie un bearer Auth \`bo\`, recharge l'administrateur actif et non invité, puis demande à \`AclAuthorizer\` l'action requise. Le refus distingue 401 (authentification) et 403 (ACL). Aucun module client ne doit lire lui-même les tokens.
+
+\`AdministratorAccountController\` expose \`GET /apibo/admins\` (200 comptes récents), \`PATCH /apibo/admins/{id}\` (rôle explicite existant et/ou état \`enabled\`), et \`DELETE /apibo/admins/{id}\`. La création reste **exclusivement le parcours d'invitation** existant, où l'administrateur choisit son propre mot de passe. Le serveur vérifie \`admins:list/update/delete\` et \`roles:assign:<code>\` lorsque le rôle est modifié ou retiré. Le \`ROLE_DEV\` initial et l'acteur lui-même ne sont jamais modifiables ni supprimables. Les changements de rôle et d'état, ainsi que la suppression, révoquent les sessions de la cible dans une transaction DBAL. La suppression invalide aussi les jetons d'invitation encore enregistrés.
+
+Les changements d'adresse restent volontairement exclus de PATCH : ils demandent un parcours de vérification de la nouvelle boîte aux lettres, non encore livré. Toutes les réponses sont \`no-store\`. Les écrans BO doivent utiliser le client natif \`boApi\` et respecter les refus d'ACL. L'API et les écrans restent soumis aux tests/CI et crash-tests réels de XT.
+
