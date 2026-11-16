@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Button from '../../../../components/Button.svelte';
+  import DataTable from '../../../../components/DataTable.svelte';
+  import type { DataAction, DataColumn } from '../../../../components/data-table';
+  import Alert from '../../../../components/Alert.svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { ApiError } from '../../../../api/client';
@@ -32,6 +36,22 @@
   let message = $state('');
   const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
   const t = $derived(invitationCopy(language));
+  const invitationColumns = $derived<DataColumn<PendingInvitation>[]>([
+    { key: 'email', label: t.email },
+    { key: 'role_code', label: t.role },
+    { key: 'created_at', label: t.date,
+      format: (value) => new Date(String(value)).toLocaleDateString(language) },
+    { key: 'enabled', label: t.state,
+      format: (value) => value ? t.active : t.disabled }
+  ]);
+  const invitationActions = $derived<DataAction<PendingInvitation>[]>([
+    {
+      key: 'resend',
+      label: (row) => resending === row.id ? t.sending : t.resend,
+      disabled: (row) => !row.enabled || resending !== null,
+      onClick: (row) => { void resend(row.id); }
+    }
+  ]);
 
   function explain(cause: unknown): string {
     if (cause instanceof ApiError) {
@@ -160,8 +180,8 @@
 <div class="invitations">
         <section class="panel">
           <h1>{t.heading}</h1><p>{t.intro}</p>
-          {#if error}<p class="notice error" role="alert">{error}</p>{/if}
-          {#if message}<p class="notice success" role="status">{message}</p>{/if}
+          {#if error}<Alert kind="error">{error}</Alert>{/if}
+          {#if message}<Alert kind="success">{message}</Alert>{/if}
           <form onsubmit={invite}>
             <label for="new-admin-email">{t.email}</label>
             <input id="new-admin-email" type="email" bind:value={email} autocomplete="email" maxlength="254" required />
@@ -172,37 +192,25 @@
             <select id="invitation-locale" bind:value={locale}>
               <option value="fr">{t.fr}</option><option value="en">{t.en}</option>
             </select>
-            <button type="submit" disabled={busy}>{busy ? t.sending : t.send}</button>
+            <Button type="submit" disabled={busy}>{busy ? t.sending : t.send}</Button>
           </form>
         </section>
         <section class="panel">
           <div class="section-heading">
             <h2>{t.pending}</h2>
-            <button class="secondary" type="button" onclick={refresh} disabled={refreshing}>{t.reload}</button>
+            <Button variant="secondary" type="button" onclick={refresh} disabled={refreshing}>{t.reload}</Button>
           </div>
-          {#if listError}<p class="notice error" role="alert">{listError}</p>{/if}
+          {#if listError}<Alert kind="error">{listError}</Alert>{/if}
           {#if refreshing}<p role="status">{t.loading}</p>{/if}
           {#if !refreshing && !listError && invitations.length === 0}<p>{t.empty}</p>{/if}
           {#if invitations.length > 0}
-            <div class="table-container">
-              <table>
-                <thead><tr><th>{t.email}</th><th>{t.role}</th><th>{t.date}</th><th>{t.state}</th><th></th></tr></thead>
-                <tbody>
-                  {#each invitations as item (item.id)}
-                    <tr>
-                      <td>{item.email}</td><td><code>{item.role_code}</code></td>
-                      <td>{new Date(item.created_at).toLocaleDateString(language)}</td>
-                      <td>{item.enabled ? t.active : t.disabled}</td>
-                      <td>
-                        <button class="secondary" type="button"
-                          disabled={!item.enabled || resending !== null}
-                          onclick={() => resend(item.id)}>{resending === item.id ? t.sending : t.resend}</button>
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              rows={invitations}
+              columns={invitationColumns}
+              actions={invitationActions}
+              loading={refreshing}
+              emptyMessage={t.empty}
+            />
           {/if}
         </section>
         <section class="panel">
@@ -241,13 +249,13 @@
                       <td>
                         {#if canMaintainBoAdmin(account, currentId)}
                           {#if editing === account.id}
-                            <button type="button" disabled={saving || deleting !== null}
-                              onclick={() => updateAccount(account.id)}>{saving ? t.sending : t.save}</button>
-                            <button type="button" class="secondary" onclick={() => editing = null}>{t.cancel}</button>
+                            <Button type="button" disabled={saving || deleting !== null}
+                              onclick={() => updateAccount(account.id)}>{saving ? t.sending : t.save}</Button>
+                            <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
                           {:else}
-                            <button type="button" class="secondary" onclick={() => startEdit(account)}>{t.edit}</button>
-                            <button type="button" class="secondary" disabled={deleting !== null}
-                              onclick={() => deleteAccount(account.id)}>{t.delete}</button>
+                            <Button type="button" variant="secondary" onclick={() => startEdit(account)}>{t.edit}</Button>
+                            <Button type="button" variant="secondary" disabled={deleting !== null}
+                              onclick={() => deleteAccount(account.id)}>{t.delete}</Button>
                           {/if}
                         {:else}
                           <small>{t.protected}</small>
@@ -271,19 +279,12 @@
   label { font-weight: 600; }
   form label, form input, form select, form small { grid-column: 1 / -1; }
   input, select { padding: 12px; border-radius: 8px; border: 1px solid #ccd4df; font: inherit; }
-  button { border-radius: 8px; border: 0; padding: 11px 16px; background: #1e293b; color: #fff; font: inherit; cursor: pointer; }
-  button:disabled { cursor: not-allowed; opacity: 0.6; }
-  .secondary { background: #fff; color: #1e293b; border: 1px solid #ccd4df; }
   .section-heading { display: flex; align-items: center; justify-content: space-between; }
-  .notice { padding: 10px 14px; border-radius: 8px; }
-  .error { background: #fff1f1; color: #9d2626; }
-  .success { background: #eefaf2; color: #236747; }
   .table-container { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; margin-top: 16px; text-align: left; }
   th, td { padding: 13px 10px; border-bottom: 1px solid #e2e7ee; }
   th { color: #667085; font-size: .8rem; }
   td small { display: block; margin-top: 5px; }
-  td button { margin: 3px; }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   @media (max-width: 700px) { form { grid-template-columns: 1fr; } .panel { padding: 18px; } }
 </style>
