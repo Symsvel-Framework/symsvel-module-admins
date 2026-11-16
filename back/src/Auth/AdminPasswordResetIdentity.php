@@ -7,13 +7,14 @@ namespace SymSvel\Module\Admins\Auth;
 use Doctrine\DBAL\Connection;
 use SymSvel\Module\Auth\Identity\PasswordResetIdentity;
 use SymSvel\Module\Auth\Identity\EmailVerificationIdentity;
+use SymSvel\Module\Auth\Identity\AdminInvitationIdentity;
 use SymSvel\Module\Auth\Token\TokenSubject;
 
 /**
  * BO credential owner. Uses the host DBAL connection so a password update
  * can participate in Auth's reset-token and session-revocation transaction.
  */
-final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity, EmailVerificationIdentity
+final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity, EmailVerificationIdentity, AdminInvitationIdentity
 {
     public function __construct(private Connection $connection)
     {
@@ -96,6 +97,33 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
             'UPDATE symsvel_admins SET email_verified_at = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL',
             [$now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), $subject->id, true, $email],
             [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING],
+        ) === 1;
+    }
+
+    /**
+     * No separate verification step: the first password and mailbox approval
+     * are one conditional update inside Auth's invitation transaction.
+     */
+    public function activateInvitation(int $adminId, string $emailHash, string $passwordHash, \DateTimeImmutable $now): bool
+    {
+        if ($adminId < 1 || !preg_match('/^[a-f0-9]{64}$/D', $emailHash)
+            || password_get_info($passwordHash)['algoName'] !== 'argon2id') {
+            return false;
+        }
+
+        $email = $this->connection->fetchOne(
+            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NULL',
+            [$adminId, true],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+        );
+        if (!is_string($email) || !hash_equals(hash('sha256', strtolower(trim($email))), $emailHash)) {
+            return false;
+        }
+
+        return $this->connection->executeStatement(
+            'UPDATE symsvel_admins SET password_hash = ?, email_verified_at = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL',
+            [$passwordHash, $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), $adminId, true, $email],
+            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING],
         ) === 1;
     }
 
