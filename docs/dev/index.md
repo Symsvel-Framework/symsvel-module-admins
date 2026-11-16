@@ -197,3 +197,7 @@ La page `/admins` complète les invitations avec `GET /apibo/admins`, `PATCH /ap
 ### Transactions uniques Auth / Admins (16/11/2026)
 
 Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désormais `TokenSessionRevoker::revokeWith()` comme **unique propriétaire de transaction** : modification du compte et révocation des sessions dans le même `DbalTokenStore`. Cela évite une transaction DBAL extérieure au verrou SQLite du TokenStore, tout en conservant le rollback sur erreur et les contrôles ACL. Le contrat public `revokeAll()` demeure inchangé. Les crash-tests sur les quatre moteurs et la CI de l'assemblage sont nécessaires avant clôture.
+
+### Tests du CRUD BO Admins (16/11/2026)
+
+`AdministratorAccountControllerTest` démarre Doctrine ORM et Auth DBAL sur SQLite en mémoire, puis vérifie `GET/PATCH/DELETE` avec un résultat `BoAccessGate` strict. Les cas `ROLE_DEV` et auto-modification restent bloqués côté serveur ; une modification du rôle et de l'état révoque les sessions, et la suppression conserve le développeur initial. Les refus de session/ACL retournent 401/403. L'absence de transactions imbriquées SQLite est vérifiée par cette intégration. CI et crash-test XT requis.
