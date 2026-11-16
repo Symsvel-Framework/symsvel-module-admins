@@ -106,7 +106,7 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_admin_invitations'));
     }
 
-    /** @return array{AdministratorInvitationController, Connection, AdminRepository, array} */
+    /** @return array{AdministratorInvitationController, Connection, AdminRepository, \ArrayObject} */
     private function fixture(): array
     {
         if (!extension_loaded('pdo_sqlite')) {
@@ -165,10 +165,10 @@ final class AdministratorInvitationHttpTest extends TestCase
         $settings->set('auth.bo_invitation_url', 'https://bo.example.test/activate');
         $settings->flush();
 
-        $messages = [];
+        $messages = new \ArrayObject();
         $mailer = $this->createMock(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(
-            static function (RawMessage $message) use (&$messages): void { $messages[] = $message; },
+            static function (RawMessage $message) use ($messages): void { $messages->append($message); },
         );
         $loader = new FilesystemLoader();
         $loader->addPath(dirname((new \ReflectionClass(AuthMailTemplateProvider::class))->getFileName(), 3).'/templates', 'Auth');
@@ -201,7 +201,7 @@ final class AdministratorInvitationHttpTest extends TestCase
         $auth = new AuthenticatedTokenResolver(new AccessTokenVerifier($lookup), new AdminIdentityProvider($admins));
         $controller = new AdministratorInvitationController($auth, $admins, new AclAuthorizer($db), $manager);
 
-        return [$controller, $db, $admins, &$messages];
+        return [$controller, $db, $admins, $messages];
     }
 
     private static function request(string $path, ?string $bearer, array $data): Request
