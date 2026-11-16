@@ -174,3 +174,9 @@ Le manifeste et Composer déclarent la dépendance native à ACLs. La configurat
 ### Interface d'invitation BO Svelte (16/11/2026)
 
 La page `/admins` du module remplace le placeholder de CT. Elle utilise `boApi()` pour la création, le renvoi et la lecture sécurisée des invitations ; `currentBo()` contrôle la session. Aucun traitement de token propre au module. Le rôle doit être fourni explicitement, puis vérifié par Roles et ACLs côté backend. Textes externalisés dans le fichier TypeScript `bo/src/lib/modules/admins/invitations.ts`, sélection FR/EN. La CI backend, même verte, ne suffit pas à valider le BO compilé ; crash-tests locaux et validation de l'utilisateur restent nécessaires.
+
+### CI complémentaire Svelte assemblé (16/11/2026)
+
+La CI Admins ajoute un **job indépendant `bo-integration`** sur le runner auto-hébergé. Il récupère le BO hôte en branche `dev`, reproduit les destinations de synchronisation de la route et du fichier TypeScript Admins (sans modifier Tooling), installe les dépendances et exécute `npm run format`, `npm run check`, `npm run lint`, `npm run build` et les tests unitaires Vitest avec Chromium.
+
+Ce job valide les imports `#lib`, les composants synchronisés et la compilation statique dans le BO réel. Le formatage s'effectue **uniquement dans la copie assemblée** pour suivre la convention CI du BO ; il ne modifie ni ne pousse les sources du module. Le chantier n'est pas clôturé par ce job : les appels HTTP sont simulés en tests et les crash-tests locaux utilisateur sont obligatoires. L'accès au BO privé doit être accordé au secret `SYMSVEL_READ_TOKEN`.

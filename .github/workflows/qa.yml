@@ -35,3 +35,47 @@ jobs:
           composer show symsvel-framework/module-settings
           php -r 'require "vendor/autoload.php"; if (!interface_exists("SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity")) { fwrite(STDERR, "Auth PasswordResetIdentity missing from installed dependency\\n"); exit(1); }'
       - run: composer qa
+
+  bo-integration:
+    runs-on: [self-hosted, linux, ARM64, symsvel]
+    steps:
+      - name: Checkout Admins module
+        uses: actions/checkout@v4
+      - name: Checkout BO host on dev
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-bo
+          ref: dev
+          path: assembled-bo
+          token: ${{ secrets.SYMSVEL_READ_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: assembled-bo/package-lock.json
+      - name: Assemble module routes like Tooling
+        run: |
+          mkdir -p assembled-bo/src/lib/modules/admins/routes/admins
+          mkdir -p assembled-bo/src/routes/admins
+          cp bo/src/lib/modules/admins/*.ts assembled-bo/src/lib/modules/admins/
+          cp bo/src/routes/admins/+page.svelte assembled-bo/src/lib/modules/admins/routes/admins/+page.svelte
+          cat > assembled-bo/src/routes/admins/+page.svelte <<'ROUTE'
+          <script lang="ts">
+            import ModulePage from '#lib/modules/admins/routes/admins/+page.svelte';
+          </script>
+          <ModulePage />
+          ROUTE
+      - name: Install BO dependencies
+        working-directory: assembled-bo
+        run: npm ci --no-audit --no-fund
+      - name: Format assembled BO (same convention as BO CI)
+        working-directory: assembled-bo
+        run: npm run format
+      - name: Validate assembled BO types, style, build and unit tests
+        working-directory: assembled-bo
+        run: |
+          npm run check
+          npm run lint
+          npm run build
+          npx playwright install chromium
+          npm run test:unit -- --run
