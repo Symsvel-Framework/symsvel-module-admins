@@ -28,12 +28,26 @@ final class InitialAdministratorProvisioner
             if ($existing->getRoleCode() !== 'ROLE_DEV' || !hash_equals($existing->getPasswordHash(), $passwordHash)) {
                 throw new \RuntimeException('Existing administrator differs from staged setup credentials.');
             }
+            $this->trustExistingBootstrap($existing);
             return;
         }
         if ($this->admins->count([]) > 0) {
             throw new \RuntimeException('Initial administrator already exists; refusing to create a second bootstrap account.');
         }
+        $candidate->trustEmailFromLocalSetup();
         $this->entityManager->persist($candidate);
         $this->entityManager->flush();
     }
+    /** Only called after a guarded local Setup has verified the existing credentials. */
+    public function trustExistingBootstrap(Admin $admin): void
+    {
+        if ($admin->getRoleCode() !== 'ROLE_DEV' || $this->admins->count([]) !== 1) {
+            throw new \RuntimeException('Cannot trust a non-initial administrator.');
+        }
+        if ($admin->getEmailVerifiedAt() === null) {
+            $admin->trustEmailFromLocalSetup();
+            $this->entityManager->flush();
+        }
+    }
+
 }
