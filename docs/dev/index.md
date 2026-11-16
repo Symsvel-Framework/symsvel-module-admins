@@ -135,3 +135,9 @@ Cette décision remplace la règle du 15/11/2026 qui imposait une confirmation e
 - **Changement d'adresse** : la vérification précédente doit être annulée ; la nouvelle adresse doit être confirmée avant d'être éligible à la récupération du mot de passe.
 
 Les contrats de persistance et de jetons déjà livrés restent applicables. **État** : cette section documente la décision ; la mise à jour de l'opération de bootstrap et le nouveau parcours d'invitation doivent être réalisés et validés par les tests, CI et crash-tests. Ne pas considérer ce texte comme une preuve que les comportements sont déjà opérationnels.
+
+## Activation d'un administrateur invité (16/11/2026)
+
+`AdminPasswordResetIdentity` implémente `AdminInvitationIdentity` et expose `activateInvitation()`. Auth lui transmet un ID, une empreinte d'adresse et un hash Argon2id au sein de sa transaction DBAL. Admins vérifie que le compte est actif, que son adresse actuelle correspond au jeton et que `email_verified_at` est encore `NULL`, puis actualise **ensemble** le mot de passe et `email_verified_at` au moyen d'un `UPDATE` conditionnel. Le bundle publie l'adaptateur avec le tag `symsvel.auth.admin_invitation_identity`.
+
+Ce contrat ne crée pas encore les comptes invités et ne diffuse aucun e-mail. L'invitation doit être émise uniquement pour un administrateur fraîchement créé et non activé ; les changements d'adresse après activation devront suivre le parcours spécifique de revalidation. CI et crash-tests à confirmer.
