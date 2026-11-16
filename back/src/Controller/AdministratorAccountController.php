@@ -95,12 +95,12 @@ final readonly class AdministratorAccountController
             $changes['enabled'] = $payload['enabled'];
         }
         if ($changes !== []) {
-            $this->db->transactional(function () use ($id, $changes): void {
-                $this->db->update('symsvel_admins', $changes, ['id' => $id]);
-                $this->sessions->revokeAll(
-                    new TokenSubject('bo', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
-                );
-            });
+            $this->sessions->revokeWith(
+                new TokenSubject('bo', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                function () use ($id, $changes): void {
+                    $this->db->update('symsvel_admins', $changes, ['id' => $id]);
+                },
+            );
         }
         return self::response(['status' => 'updated']);
     }
@@ -124,13 +124,13 @@ final readonly class AdministratorAccountController
         if (!$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$target['role_code'])) {
             return self::failure(403);
         }
-        $this->db->transactional(function () use ($id): void {
-            $this->sessions->revokeAll(
-                new TokenSubject('bo', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
-            );
-            $this->db->delete('symsvel_auth_admin_invitations', ['principal_id' => $id]);
-            $this->db->delete('symsvel_admins', ['id' => $id]);
-        });
+        $this->sessions->revokeWith(
+            new TokenSubject('bo', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            function () use ($id): void {
+                $this->db->delete('symsvel_auth_admin_invitations', ['principal_id' => $id]);
+                $this->db->delete('symsvel_admins', ['id' => $id]);
+            },
+        );
         return self::response(['status' => 'deleted']);
     }
 

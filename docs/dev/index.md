@@ -193,3 +193,7 @@ Les changements d'adresse restent volontairement exclus de PATCH : ils demandent
 ### Écran des comptes BO (16/11/2026)
 
 La page `/admins` complète les invitations avec `GET /apibo/admins`, `PATCH /apibo/admins/{id}` et `DELETE /apibo/admins/{id}` via `boApi` ; le développeur initial et le compte courant ne sont pas modifiables dans l'UI, en complément des contrôles stricts côté serveur. L'édition porte sur rôle et état actif, jamais sur une adresse qui requerrait une nouvelle vérification. Les textes sont externalisés et un test protège l'interdiction de modifier le développeur ou soi-même. CI BO et CT XT à valider.
+
+### Transactions uniques Auth / Admins (16/11/2026)
+
+Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désormais `TokenSessionRevoker::revokeWith()` comme **unique propriétaire de transaction** : modification du compte et révocation des sessions dans le même `DbalTokenStore`. Cela évite une transaction DBAL extérieure au verrou SQLite du TokenStore, tout en conservant le rollback sur erreur et les contrôles ACL. Le contrat public `revokeAll()` demeure inchangé. Les crash-tests sur les quatre moteurs et la CI de l'assemblage sont nécessaires avant clôture.
