@@ -8,6 +8,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Admins\Controller\AdminsPingController;
+use SymSvel\Module\Admins\Controller\AdministratorInvitationController;
 use SymSvel\Module\Admins\Auth\AdminIdentityProvider;
 use SymSvel\Module\Admins\Auth\AdminPasswordResetIdentity;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminCommand;
@@ -23,6 +24,9 @@ final class AdminsBundle extends AbstractBundle
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $builder->register(AdminsPingController::class, AdminsPingController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AdministratorInvitationController::class, AdministratorInvitationController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
         foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class, PendingAdministratorCreator::class, AdministratorInvitationManager::class] as $service) {

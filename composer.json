@@ -12,7 +12,8 @@
         "symsvel-framework/module-auth": "dev-dev",
         "symsvel-framework/module-mails": "dev-dev",
         "symsvel-framework/module-settings": "dev-dev",
-        "symsvel-framework/module-roles": "dev-dev"
+        "symsvel-framework/module-roles": "dev-dev",
+        "symsvel-framework/module-acls": "dev-dev"
     },
     "autoload": {
         "psr-4": {
@@ -42,6 +43,10 @@
         }
     },
     "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-acls.git"
+        },
         {
             "type": "vcs",
             "url": "https://github.com/Symsvel-Framework/symsvel-module-roles.git"

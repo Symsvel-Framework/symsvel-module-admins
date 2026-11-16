@@ -154,3 +154,15 @@ La fabrique `Admin::invited()` crée un administrateur avec un hash Argon2id d'u
 - `AdministratorInvitationManager` orchestre **en interne** la création côté Admins puis `AdminInvitationDispatch` côté Auth/Mails. Une panne du transport peut laisser un compte en attente ; la méthode `resend()` permet à un appelant interne autorisé de réémettre l'invitation uniquement pour ce compte. Aucune méthode d'émission n'est accessible sans contrôle préalable par le futur endpoint BO.
 
 Couverture ajoutée : rôles protégés, état pending, migration additive, intégration ORM/DBAL de l'invitation jusqu'à l'activation et blocage des voies alternatives. **CI et crash-tests XT multi-SGBD restent à valider.** La couche HTTP authentifiée et ses ACLs, les pages Svelte ainsi que le flux d'envoi complet ne sont pas encore livrés : les services internes ne constituent pas une API d'administration publique.
+
+## API BO sécurisée de création et renvoi des invitations (16/11/2026)
+
+`AdministratorInvitationController` expose deux opérations BO :
+- `POST /apibo/admins/invitations` avec JSON `{"email":"…","role_code":"ROLE_ADMIN","locale":"fr"}`, réponse `201` lorsque le mail a été envoyé ;
+- `POST /apibo/admins/{id}/invitations/resend` avec JSON `{"locale":"fr"}`, réponse `200` après renvoi.
+
+Le contrôleur vérifie **d'abord** le bearer token BO via `AuthenticatedTokenResolver` (jeton actuel, non expiré, non révoqué, sujet activé). Le rôle courant est relu depuis Admins, puis `AclAuthorizer` (module ACLs) vérifie `(resource=admins, action=create)` ou `(resource=admins, action=resend)`. La création exige aussi le droit sur `(resource=roles, action=assign:ROLE_…)`, pour le rôle précis à attribuer ; le renvoi vérifie la même autorisation sur le rôle du destinataire. `ROLE_DEV` passe les ACL et `ROLE_SUPER_ADMIN` passe ces opérations fonctionnelles, conformément aux règles acceptées. Tout autre rôle doit recevoir des affectations ACL **explicites** ; aucune règle par défaut n'est créée.
+
+L'API ne permet jamais d'inviter `ROLE_DEV` ou `ROLE_USER`, ni d'activer directement un compte. Elle ne crée pas de session, ne divulgue jamais de jeton d'invitation, refuse les JSON invalides et limite leur taille, et désactive les caches sur toutes les réponses. Erreurs : `401` non authentifié, `403` droit manquant, `400/415` requête incorrecte, `409` invitation indisponible. La création et l'envoi passent exclusivement par les services existants Admins/Auth/Mails. En cas d'échec du transport mail après création, le compte reste inactif avec `invitation_pending = true` ; le renvoi autorisé sert à le récupérer.
+
+Le manifeste et Composer déclarent la dépendance native à ACLs. La configuration Symfony `security.yaml` du Back ne traduit pas aujourd'hui ces bearer tokens en utilisateurs Symfony : **ne pas substituer un simple `#[IsGranted]`** à la résolution Auth actuelle. Les tests contrôlent les voies d'autorisation et les réponses. **CI et crash-tests multi-SGBD requis** pour valider cette intégration.
