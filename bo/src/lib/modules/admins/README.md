@@ -12,6 +12,6 @@ Les libellés de l'écran résident dans `bo/src/lib/modules/admins/invitations.
 
 Validation requise : **build du BO assemblé après synchronisation**, contrôle Svelte/TypeScript/Prettier, tests navigateur et crash-tests locaux réels. La CI PHP du dépôt ne valide pas l'exécution Svelte.
 
-### Résolution des imports (16/11/2026)
+### Résolution effective des imports Svelte (16/11/2026)
 
-Les sources Svelte des modules utilisent l'alias **natif SvelteKit** `$lib` pour importer les clients et helpers du BO. L'alias `#lib` du relais de route reste généré par Tooling, mais ne résout pas les imports TypeScript directs dans les pages lors de `svelte-check`. La CI du BO assemblé couvre cette différence ; aucun changement n'est nécessaire dans la logique métier Auth ou Admins.
+Le `svelte-check` du BO hôte ne résout pas les alias `#lib` et `$lib` depuis les pages modules copiées par Tooling avec la configuration TypeScript actuelle. La page utilise donc des **imports relatifs à sa destination synchronisée** sous `src/lib/modules/…/routes/`, suivant le modèle déjà opérationnel des pages de connexion et dashboard du BO. Le relais de route généré par Tooling demeure inchangé. Le CI `bo-integration` teste la résolution dans le vrai BO assemblé.
