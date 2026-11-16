@@ -7,7 +7,8 @@
   import { boApi, currentBo } from '../../../../api/session';
   import {
     invitationCopy, isAssignableBoRole,
-    type PendingInvitation, type PendingInvitationsResponse, type InvitationCreateResponse
+    type PendingInvitation, type PendingInvitationsResponse, type InvitationCreateResponse,
+    canMaintainBoAdmin, type BoAdminAccount, type BoAdminAccountsResponse
   } from '../../invitations';
 
   let ready = $state(false);
@@ -18,6 +19,13 @@
   let refreshing = $state(false);
   let resending = $state<number | null>(null);
   let invitations = $state<PendingInvitation[]>([]);
+  let accounts = $state<BoAdminAccount[]>([]);
+  let currentId = $state<number | null>(null);
+  let editing = $state<number | null>(null);
+  let newRole = $state('');
+  let newEnabled = $state(true);
+  let saving = $state(false);
+  let deleting = $state<number | null>(null);
   let error = $state('');
   let listError = $state('');
   let message = $state('');
@@ -42,6 +50,8 @@
     try {
       const result = await boApi<PendingInvitationsResponse>('/apibo/admins/invitations');
       invitations = Array.isArray(result?.data) ? result.data : [];
+      const listed = await boApi<BoAdminAccountsResponse>('/apibo/admins');
+      accounts = Array.isArray(listed?.data) ? listed.data : [];
     } catch (cause) {
       listError = cause instanceof ApiError && cause.status === 403 ? t.listForbidden : explain(cause);
     } finally {
@@ -58,6 +68,7 @@
         return;
       }
       ready = true;
+      currentId = identity.id;
       locale = language.toLowerCase().startsWith('fr') ? 'fr' : 'en';
       void refresh();
     });
@@ -104,6 +115,53 @@
       error = explain(cause);
     } finally {
       resending = null;
+    }
+  }
+
+  function startEdit(account: BoAdminAccount): void {
+    editing = account.id;
+    newRole = account.role_code;
+    newEnabled = account.enabled;
+    error = '';
+    message = '';
+  }
+
+  async function updateAccount(id: number): Promise<void> {
+    if (saving || !isAssignableBoRole(newRole)) {
+      error = t.invalidRole;
+      return;
+    }
+    saving = true;
+    error = '';
+    message = '';
+    try {
+      await boApi<{status: string}>('/apibo/admins/' + id, {
+        method: 'PATCH', body: JSON.stringify({ role_code: newRole, enabled: newEnabled })
+      });
+      editing = null;
+      message = t.updated;
+      await refresh();
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function deleteAccount(id: number): Promise<void> {
+    if (deleting !== null || !window.confirm(t.confirmDelete)) return;
+    deleting = id;
+    error = '';
+    message = '';
+    try {
+      await boApi<{status: string}>('/apibo/admins/' + id, { method: 'DELETE' });
+      message = t.deleted;
+      if (editing === id) editing = null;
+      await refresh();
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      deleting = null;
     }
   }
 </script>
@@ -165,6 +223,61 @@
             </div>
           {/if}
         </section>
+        <section class="panel">
+          <h2>{t.accounts}</h2>
+          {#if accounts.length === 0 && !refreshing && !listError}<p>{t.noAccounts}</p>{/if}
+          {#if accounts.length > 0}
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr><th>{t.email}</th><th>{t.role}</th><th>{t.status}</th><th>{t.management}</th></tr>
+                </thead>
+                <tbody>
+                  {#each accounts as account (account.id)}
+                    <tr>
+                      <td>{account.email}<small>{account.email_verified ? t.verified : t.unverified}</small></td>
+                      <td>
+                        {#if editing === account.id}
+                          <label class="sr-only" for={'role-' + account.id}>{t.role}</label>
+                          <input id={'role-' + account.id} type="text" bind:value={newRole}
+                            maxlength="100" required />
+                        {:else}
+                          <code>{account.role_code}</code>
+                        {/if}
+                      </td>
+                      <td>
+                        {#if editing === account.id}
+                          <label class="sr-only" for={'enabled-' + account.id}>{t.status}</label>
+                          <select id={'enabled-' + account.id} bind:value={newEnabled}>
+                            <option value={true}>{t.active}</option>
+                            <option value={false}>{t.disabled}</option>
+                          </select>
+                        {:else}
+                          {account.enabled ? t.active : t.disabled}
+                        {/if}
+                      </td>
+                      <td>
+                        {#if canMaintainBoAdmin(account, currentId)}
+                          {#if editing === account.id}
+                            <button type="button" disabled={saving || deleting !== null}
+                              onclick={() => updateAccount(account.id)}>{saving ? t.sending : t.save}</button>
+                            <button type="button" class="secondary" onclick={() => editing = null}>{t.cancel}</button>
+                          {:else}
+                            <button type="button" class="secondary" onclick={() => startEdit(account)}>{t.edit}</button>
+                            <button type="button" class="secondary" disabled={deleting !== null}
+                              onclick={() => deleteAccount(account.id)}>{t.delete}</button>
+                          {/if}
+                        {:else}
+                          <small>{t.protected}</small>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </section>
       </main>
     </div>
   </div>
@@ -194,5 +307,8 @@
   table { width: 100%; border-collapse: collapse; margin-top: 16px; text-align: left; }
   th, td { padding: 13px 10px; border-bottom: 1px solid #e2e7ee; }
   th { color: #667085; font-size: .8rem; }
+  td small { display: block; margin-top: 5px; }
+  td button { margin: 3px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   @media (max-width: 700px) { form { grid-template-columns: 1fr; } .panel { padding: 18px; } }
 </style>
