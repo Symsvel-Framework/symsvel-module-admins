@@ -19,7 +19,7 @@ final class AdminPasswordResetIdentityVerifiedMailboxTest extends TestCase
         }
 
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254) NOT NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME DEFAULT NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254) NOT NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, invitation_pending BOOLEAN NOT NULL DEFAULT 0, email_verified_at DATETIME DEFAULT NULL)');
         $hash = password_hash('original-password', PASSWORD_ARGON2ID);
         $db->insert('symsvel_admins', ['id' => 17, 'email' => 'confirmed@example.test', 'password_hash' => $hash, 'enabled' => true, 'email_verified_at' => null]);
         $owner = new AdminPasswordResetIdentity($db);

@@ -34,7 +34,7 @@ final readonly class AdminIdentityProvider implements PasswordPrincipal, Princip
         }
 
         $admin = $this->admins->findOneBy(['email' => $identifier]);
-        if (!$admin instanceof Admin || !$admin->isEnabled() || !password_verify($password, $admin->getPasswordHash())) {
+        if (!$admin instanceof Admin || !$admin->isEnabled() || $admin->isInvitationPending() || !password_verify($password, $admin->getPasswordHash())) {
             return null;
         }
 
@@ -51,6 +51,6 @@ final readonly class AdminIdentityProvider implements PasswordPrincipal, Princip
 
         $admin = $this->admins->find($subject->id);
 
-        return $admin instanceof Admin && $admin->isEnabled();
+        return $admin instanceof Admin && $admin->isEnabled() && !$admin->isInvitationPending();
     }
 }

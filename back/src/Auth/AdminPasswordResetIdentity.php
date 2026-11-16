@@ -33,9 +33,9 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         $id = $this->connection->fetchOne(
-            'SELECT id FROM symsvel_admins WHERE email = ? AND enabled = ?',
-            [$identifier, true],
-            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::BOOLEAN],
+            'SELECT id FROM symsvel_admins WHERE email = ? AND enabled = ? AND invitation_pending = ?',
+            [$identifier, true, false],
+            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::BOOLEAN],
         );
 
         return $id === false ? null : new TokenSubject('bo', (int) $id);
@@ -49,9 +49,9 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         $email = $this->connection->fetchOne(
-            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NOT NULL',
-            [$subject->id, true],
-            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NOT NULL AND invitation_pending = ?',
+            [$subject->id, true, false],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::BOOLEAN],
         );
 
         return is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
@@ -65,9 +65,9 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         $email = $this->connection->fetchOne(
-            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NULL',
-            [$subject->id, true],
-            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NULL AND invitation_pending = ?',
+            [$subject->id, true, false],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::BOOLEAN],
         );
 
         return is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
@@ -84,9 +84,9 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         $email = $this->connection->fetchOne(
-            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ?',
-            [$subject->id, true],
-            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND invitation_pending = ?',
+            [$subject->id, true, false],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::BOOLEAN],
         );
         if (!is_string($email)
             || !hash_equals(hash('sha256', strtolower(trim($email))), $emailHash)) {
@@ -94,9 +94,9 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         return $this->connection->executeStatement(
-            'UPDATE symsvel_admins SET email_verified_at = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL',
-            [$now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), $subject->id, true, $email],
-            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING],
+            'UPDATE symsvel_admins SET email_verified_at = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL AND invitation_pending = ?',
+            [$now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), $subject->id, true, $email, false],
+            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::BOOLEAN],
         ) === 1;
     }
 
@@ -112,18 +112,18 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         $email = $this->connection->fetchOne(
-            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NULL',
-            [$adminId, true],
-            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+            'SELECT email FROM symsvel_admins WHERE id = ? AND enabled = ? AND email_verified_at IS NULL AND invitation_pending = ?',
+            [$adminId, true, true],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::BOOLEAN],
         );
         if (!is_string($email) || !hash_equals(hash('sha256', strtolower(trim($email))), $emailHash)) {
             return false;
         }
 
         return $this->connection->executeStatement(
-            'UPDATE symsvel_admins SET password_hash = ?, email_verified_at = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL',
-            [$passwordHash, $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), $adminId, true, $email],
-            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING],
+            'UPDATE symsvel_admins SET password_hash = ?, email_verified_at = ?, invitation_pending = ? WHERE id = ? AND enabled = ? AND email = ? AND email_verified_at IS NULL AND invitation_pending = ?',
+            [$passwordHash, $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'), false, $adminId, true, $email, true],
+            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::BOOLEAN],
         ) === 1;
     }
 
@@ -134,9 +134,9 @@ final readonly class AdminPasswordResetIdentity implements PasswordResetIdentity
         }
 
         return $this->connection->executeStatement(
-            'UPDATE symsvel_admins SET password_hash = ? WHERE id = ? AND enabled = ?',
-            [$newPasswordHash, $subject->id, true],
-            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+            'UPDATE symsvel_admins SET password_hash = ? WHERE id = ? AND enabled = ? AND invitation_pending = ?',
+            [$newPasswordHash, $subject->id, true, false],
+            [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN, \Doctrine\DBAL\ParameterType::BOOLEAN],
         ) === 1;
     }
 }

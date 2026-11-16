@@ -15,6 +15,8 @@ use SymSvel\Module\Admins\Command\ProvisionInitialAdminFromStdinCommand;
 use SymSvel\Module\Admins\Command\VerifyInitialAdminCommand;
 use SymSvel\Module\Admins\Repository\AdminRepository;
 use SymSvel\Module\Admins\Setup\InitialAdministratorProvisioner;
+use SymSvel\Module\Admins\Service\PendingAdministratorCreator;
+use SymSvel\Module\Admins\Service\AdministratorInvitationManager;
 
 final class AdminsBundle extends AbstractBundle
 {
@@ -23,7 +25,7 @@ final class AdminsBundle extends AbstractBundle
         $builder->register(AdminsPingController::class, AdminsPingController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
-        foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class] as $service) {
+        foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class, PendingAdministratorCreator::class, AdministratorInvitationManager::class] as $service) {
             $builder->register($service, $service)->setAutowired(true)->setAutoconfigured(true);
         }
         $builder->getDefinition(AdminIdentityProvider::class)->addTag('symsvel.auth.identity_provider');

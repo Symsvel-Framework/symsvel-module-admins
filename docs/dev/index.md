@@ -141,3 +141,16 @@ Les contrats de persistance et de jetons déjà livrés restent applicables. **�
 `AdminPasswordResetIdentity` implémente `AdminInvitationIdentity` et expose `activateInvitation()`. Auth lui transmet un ID, une empreinte d'adresse et un hash Argon2id au sein de sa transaction DBAL. Admins vérifie que le compte est actif, que son adresse actuelle correspond au jeton et que `email_verified_at` est encore `NULL`, puis actualise **ensemble** le mot de passe et `email_verified_at` au moyen d'un `UPDATE` conditionnel. Le bundle publie l'adaptateur avec le tag `symsvel.auth.admin_invitation_identity`.
 
 Ce contrat ne crée pas encore les comptes invités et ne diffuse aucun e-mail. L'invitation doit être émise uniquement pour un administrateur fraîchement créé et non activé ; les changements d'adresse après activation devront suivre le parcours spécifique de revalidation. CI et crash-tests à confirmer.
+
+## Grande passe : création interne des administrateurs invités (16/11/2026)
+
+Le module Admins possède la création des comptes BO. `PendingAdministratorCreator` valide un **rôle explicitement choisi**, présent dans la table du module Roles via `RoleRepository`, et rejette systématiquement `ROLE_DEV` (exclusif au Setup) et `ROLE_USER` (réservé à App). Le manifeste déclare désormais la dépendance d'installation à Roles, et Composer la dépendance `symsvel-framework/module-roles` en branche `dev`.
+
+La fabrique `Admin::invited()` crée un administrateur avec un hash Argon2id d'un secret aléatoire **jamais partagé**, un `role_code` explicite et `invitation_pending = true`. La migration additive `Version20261116000002` ajoute ce booléen à `symsvel_admins` avec `DEFAULT false` ; les admins historiques et le développeur créé au Setup restent des comptes normaux. Les migrations initiales déjà publiées ne sont pas modifiées.
+
+- `AdminIdentityProvider` refuse l'authentification et l'état actif tant que l'invitation est en attente.
+- `AdminPasswordResetIdentity` refuse la récupération, la modification du mot de passe et la confirmation autonome d'e-mail tant que `invitation_pending` est vrai.
+- L'activation par invitation reste atomique : contrôle `enabled = true`, vérification de l'adresse, mot de passe Argon2id, `email_verified_at` et bascule de `invitation_pending` à `false` dans le même UPDATE. Un administrateur **désactivé** ne peut pas être activé par son lien.
+- `AdministratorInvitationManager` orchestre **en interne** la création côté Admins puis `AdminInvitationDispatch` côté Auth/Mails. Une panne du transport peut laisser un compte en attente ; la méthode `resend()` permet à un appelant interne autorisé de réémettre l'invitation uniquement pour ce compte. Aucune méthode d'émission n'est accessible sans contrôle préalable par le futur endpoint BO.
+
+Couverture ajoutée : rôles protégés, état pending, migration additive, intégration ORM/DBAL de l'invitation jusqu'à l'activation et blocage des voies alternatives. **CI et crash-tests XT multi-SGBD restent à valider.** La couche HTTP authentifiée et ses ACLs, les pages Svelte ainsi que le flux d'envoi complet ne sont pas encore livrés : les services internes ne constituent pas une API d'administration publique.

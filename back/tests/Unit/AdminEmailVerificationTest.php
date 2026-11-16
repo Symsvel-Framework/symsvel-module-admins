@@ -17,7 +17,7 @@ final class AdminEmailVerificationTest extends TestCase
             self::markTestSkipped('pdo_sqlite is required.');
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254), enabled BOOLEAN, email_verified_at DATETIME NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254), enabled BOOLEAN, invitation_pending BOOLEAN NOT NULL DEFAULT 0, email_verified_at DATETIME NULL)');
         $db->insert('symsvel_admins', [
             'id' => 7, 'email' => 'owner@example.test', 'enabled' => true, 'email_verified_at' => null,
         ]);
@@ -49,7 +49,7 @@ final class AdminEmailVerificationTest extends TestCase
             self::markTestSkipped('pdo_sqlite is required.');
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254), enabled BOOLEAN, email_verified_at DATETIME NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254), enabled BOOLEAN, invitation_pending BOOLEAN NOT NULL DEFAULT 0, email_verified_at DATETIME NULL)');
         $db->insert('symsvel_admins', [
             'id' => 7, 'email' => 'changed@example.test', 'enabled' => true, 'email_verified_at' => null,
         ]);

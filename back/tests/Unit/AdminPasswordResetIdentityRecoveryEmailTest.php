@@ -22,7 +22,7 @@ final class AdminPasswordResetIdentityRecoveryEmailTest extends TestCase
             'memory' => true,
         ]);
         $db->executeStatement(
-            'CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL)',
+            'CREATE TABLE symsvel_admins (id INTEGER PRIMARY KEY, email VARCHAR(254) NOT NULL, enabled BOOLEAN NOT NULL, invitation_pending BOOLEAN NOT NULL DEFAULT 0, email_verified_at DATETIME NULL)',
         );
         $provider = new AdminPasswordResetIdentity($db);
 
