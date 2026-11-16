@@ -118,6 +118,14 @@ Le workflow `qa.yml` fournit explicitement le secret GitHub Actions `SYMSVEL_REA
 
 **Configuration à maintenir :** secret `SYMSVEL_READ_TOKEN` lisible dans chacun des trois dépôts GitHub Actions (ou via une configuration de secrets autorisée), avec droits de lecture sur les dépôts privés requis. Un `GITHUB_TOKEN` standard limité au dépôt du workflow ne suffit pas pour ces dépendances inter-dépôts. Un jeton révoqué ou expiré doit être remplacé dans les secrets GitHub, pas en dur dans `composer.json` ou les logs. CI de ce correctif à confirmer ; aucune modification du runtime.
 
+## Implémentation du bootstrap local de confiance (16/11/2026)
+
+Le premier administrateur `ROLE_DEV` est créé par `InitialAdministratorProvisioner::provision()` uniquement à partir du Setup local contrôlé : l'entité reçoit alors `email_verified_at` sans envoi d'e-mail. Un compte administrateur créé en dehors de cette opération reste non vérifié.
+
+Le parcours `symsvel:admins:bootstrap:stdin` traite aussi une reprise de Setup : après vérification du mot de passe du compte existant, `trustExistingBootstrap()` ne renseigne la date que si l'unique administrateur est `ROLE_DEV`. Aucune réinitialisation de son mot de passe ; le marquage est idempotent. L'ancien bootstrap à payload préparé utilise le même provisioner.
+
+Le test unitaire `InitialAdministratorProvisionerTest` couvre l'état initial non vérifié et la transition explicite et idempotente ; le scénario complet via commandes/Doctrine reste à crash-tester. Les administrateurs invités et le parcours d'activation ne sont **pas encore implémentés**.
+
 ## Décision révisée : vérification des adresses administrateur (16/11/2026)
 
 Cette décision remplace la règle du 15/11/2026 qui imposait une confirmation e-mail au premier administrateur du Setup.
