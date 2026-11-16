@@ -271,3 +271,13 @@ L'édition d'un compte exige aussi l'autorisation d'attribuer son **rôle
 actuel**, afin d'empêcher un opérateur de désactiver ou rétrograder un
 compte plus privilégié que lui. L'API reste l'autorité finale. Le test
 SQLite du sélecteur confirme les deux états (sans/avec grant technique).
+
+
+### Test HTTP de l'attribution SUPER_ADMIN (16/11/2026)
+
+La suite `AdministratorInvitationHttpTest` crée maintenant un acteur
+`ROLE_SUPER_ADMIN` avec un jeton BO réel de test, et vérifie que
+`admins:create` fonctionnel seul ne suffit **jamais** à inviter un autre
+`ROLE_SUPER_ADMIN`. L'invitation est acceptée seulement après l'ajout
+explicite de `roles.assign:ROLE_SUPER_ADMIN` en base. Le refus n'insère
+aucun compte en attente et n'envoie aucun e-mail.

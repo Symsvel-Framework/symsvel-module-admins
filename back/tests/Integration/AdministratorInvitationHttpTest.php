@@ -117,6 +117,32 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_admin_invitations'));
     }
 
+
+    public function testSuperAdministratorCannotInvitePeerWithoutTechnicalAssignmentGrant(): void
+    {
+        [$controller, $db, $admins, $messages] = $this->fixture();
+        $superToken = str_repeat('C', 43);
+        $payload = ['email' => 'another-super@example.test', 'role_code' => 'ROLE_SUPER_ADMIN', 'locale' => 'fr'];
+
+        // Functional authority grants admins:create but never implicitly
+        // grants the technical assign:ROLE_SUPER_ADMIN permission.
+        self::assertSame(403, $controller->create(self::request(
+            '/apibo/admins/invitations', $superToken, $payload,
+        ))->getStatusCode());
+        self::assertCount(0, $messages);
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_admins WHERE invitation_pending = 1'));
+
+        $db->insert('symsvel_acl_rules', [
+            'resource' => 'roles', 'action' => 'assign:ROLE_SUPER_ADMIN',
+            'role_code' => 'ROLE_SUPER_ADMIN', 'allowed' => true,
+        ]);
+        self::assertSame(201, $controller->create(self::request(
+            '/apibo/admins/invitations', $superToken, $payload,
+        ))->getStatusCode());
+        self::assertCount(1, $messages);
+        self::assertNotNull($admins->findOneBy(['email' => $payload['email']]));
+    }
+
     /** @return array{AdministratorInvitationController, Connection, AdminRepository, \ArrayObject} */
     private function fixture(): array
     {
@@ -152,16 +178,23 @@ final class AdministratorInvitationHttpTest extends TestCase
         $roles = new RoleRepository($registry);
         $settingRepository = new SettingRepository($registry);
         $em->persist(new Role('ROLE_ADMIN', 'Administrator'));
+        $em->persist(new Role('ROLE_SUPER_ADMIN', 'Super administrator', true));
         $developer = new Admin('developer@example.test', password_hash('dev-password-12345', PASSWORD_ARGON2ID));
         $developer->trustEmailFromLocalSetup();
         $em->persist($developer);
         $operator = Admin::invited('operator@example.test', 'ROLE_ADMIN');
         $em->persist($operator);
+        $super = Admin::invited('super@example.test', 'ROLE_SUPER_ADMIN');
+        $em->persist($super);
         $em->flush();
         $identity = new AdminPasswordResetIdentity($db);
         self::assertTrue($identity->activateInvitation(
             (int) $operator->getId(), hash('sha256', $operator->getEmail()),
             password_hash('operator-password-123', PASSWORD_ARGON2ID), new \DateTimeImmutable(),
+        ));
+        self::assertTrue($identity->activateInvitation(
+            (int) $super->getId(), hash('sha256', $super->getEmail()),
+            password_hash('super-password-123', PASSWORD_ARGON2ID), new \DateTimeImmutable(),
         ));
         $em->clear();
 
@@ -203,6 +236,9 @@ final class AdministratorInvitationHttpTest extends TestCase
             ),
             hash('sha256', self::ADMIN_TOKEN) => new AccessTokenRecord(
                 new TokenSubject('bo', (int) $operator->getId()), $now->modify('+3600 seconds'), null,
+            ),
+            hash('sha256', str_repeat('C', 43)) => new AccessTokenRecord(
+                new TokenSubject('bo', (int) $super->getId()), $now->modify('+3600 seconds'), null,
             ),
         ];
         $lookup = new class($accessRecords) implements AccessTokenLookup {
