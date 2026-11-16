@@ -75,7 +75,7 @@ final readonly class AdministratorInvitationController
             || !preg_match('/^ROLE_[A-Z][A-Z0-9_]*$/D', $roleCode)) {
             return self::response(['error' => ['code' => 'invalid_request']], 400);
         }
-        if (!$this->acls->allows($actor->getRoleCode(), 'roles', 'assign:'.$roleCode)) {
+        if (!$this->acls->allows($actor->getRoleCode(), 'roles', 'assign:'.$roleCode, $roleCode === 'ROLE_SUPER_ADMIN')) {
             return self::response(['error' => ['code' => 'forbidden']], 403);
         }
 
@@ -111,7 +111,7 @@ final readonly class AdministratorInvitationController
 
         $target = $id > 0 ? $this->admins->find($id) : null;
         if (!$target instanceof Admin
-            || !$this->acls->allows($actor->getRoleCode(), 'roles', 'assign:'.$target->getRoleCode())) {
+            || !$this->acls->allows($actor->getRoleCode(), 'roles', 'assign:'.$target->getRoleCode(), $target->getRoleCode() === 'ROLE_SUPER_ADMIN')) {
             return self::response(['error' => ['code' => 'invitation_unavailable']], 404);
         }
 

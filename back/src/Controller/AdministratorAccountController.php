@@ -82,11 +82,17 @@ final readonly class AdministratorAccountController
         if ($target['role_code'] === 'ROLE_DEV' || $decision->actorId === $id) {
             return self::failure(403);
         }
+        // Managing an existing privileged account also requires permission
+        // to assign its CURRENT role, not only its desired next role.
+        if (!$this->acls->allows((string) $decision->roleCode, 'roles',
+            'assign:'.$target['role_code'], $target['role_code'] === 'ROLE_SUPER_ADMIN')) {
+            return self::failure(403);
+        }
         $changes = [];
         if (isset($payload['role_code']) && $payload['role_code'] !== $target['role_code']) {
             $role = $payload['role_code'];
             if (!$this->roles->findOneBy(['code' => $role]) instanceof Role
-                || !$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$role)) {
+                || !$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$role, $role === 'ROLE_SUPER_ADMIN')) {
                 return self::failure(403);
             }
             $changes['role_code'] = $role;
@@ -121,7 +127,7 @@ final readonly class AdministratorAccountController
         if ($target['role_code'] === 'ROLE_DEV' || $decision->actorId === $id) {
             return self::failure(403);
         }
-        if (!$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$target['role_code'])) {
+        if (!$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$target['role_code'], $target['role_code'] === 'ROLE_SUPER_ADMIN')) {
             return self::failure(403);
         }
         $this->sessions->revokeWith(

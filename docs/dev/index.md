@@ -255,3 +255,19 @@ SQLite pour vérifier le refus sans identité, les rôles limités à
 `roles.assign:ROLE_EDITOR` pour un acteur ordinaire et la visibilité des
 rôles BO existants (hors DEV/USER) pour le développeur. Une API falsifiée
 ne suffit pas : l'endpoint de création réapplique sa validation ACL.
+
+
+### Protection de l'attribution du super-administrateur (16/11/2026)
+
+Le droit `roles.assign:ROLE_SUPER_ADMIN` est déclaré **technique** dans
+Roles. Toutes les voies d'administration respectent ce caractère :
+`GET /apibo/admins/assignable-roles`, invitation, renvoi, modification
+et suppression des comptes. Le super-administrateur dispose de droits
+fonctionnels natifs, **pas** du droit automatique d'inviter ou modifier
+un autre super-administrateur. Une autorisation technique explicite est
+nécessaire ; `ROLE_DEV` garde son exception native validée.
+
+L'édition d'un compte exige aussi l'autorisation d'attribuer son **rôle
+actuel**, afin d'empêcher un opérateur de désactiver ou rétrograder un
+compte plus privilégié que lui. L'API reste l'autorité finale. Le test
+SQLite du sélecteur confirme les deux états (sans/avec grant technique).

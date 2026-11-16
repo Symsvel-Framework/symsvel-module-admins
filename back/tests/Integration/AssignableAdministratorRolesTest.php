@@ -56,6 +56,7 @@ final class AssignableAdministratorRolesTest extends TestCase
                 return match ($auth) {
                     'Bearer Dev' => new BoAccessDecision(200, 1, 'ROLE_DEV'),
                     'Bearer Admin' => new BoAccessDecision(200, 2, 'ROLE_ADMIN'),
+                    'Bearer Super' => new BoAccessDecision(200, 3, 'ROLE_SUPER_ADMIN'),
                     default => new BoAccessDecision(401),
                 };
             }
@@ -78,5 +79,19 @@ final class AssignableAdministratorRolesTest extends TestCase
             array_column(json_decode((string) $devResponse->getContent(), true)['data'], 'code'),
         );
         self::assertTrue($devResponse->headers->hasCacheControlDirective('no-store'));
+
+        // SUPER_ADMIN inherits functional operations, not the technical
+        // permission to create another SUPER_ADMIN account.
+        $superRequest = Request::create('/apibo/admins/assignable-roles', 'GET', [], [], [],
+            ['HTTP_AUTHORIZATION' => 'Bearer Super']);
+        $superCodes = array_column(json_decode((string) $controller($superRequest)->getContent(), true)['data'], 'code');
+        self::assertContains('ROLE_ADMIN', $superCodes);
+        self::assertNotContains('ROLE_SUPER_ADMIN', $superCodes);
+        $db->insert('symsvel_acl_rules', [
+            'resource' => 'roles', 'action' => 'assign:ROLE_SUPER_ADMIN',
+            'role_code' => 'ROLE_SUPER_ADMIN', 'allowed' => true,
+        ]);
+        $superCodes = array_column(json_decode((string) $controller($superRequest)->getContent(), true)['data'], 'code');
+        self::assertContains('ROLE_SUPER_ADMIN', $superCodes);
     }
 }

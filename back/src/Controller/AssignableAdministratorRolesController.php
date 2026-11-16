@@ -35,7 +35,7 @@ final readonly class AssignableAdministratorRolesController
         foreach ($this->roles->findBy([], ['label' => 'ASC']) as $role) {
             $code = $role->getCode();
             if (in_array($code, ['ROLE_DEV', 'ROLE_USER'], true)
-                || !$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$code)) {
+                || !$this->acls->allows((string) $decision->roleCode, 'roles', 'assign:'.$code, $code === 'ROLE_SUPER_ADMIN')) {
                 continue;
             }
             $data[] = ['code' => $code, 'label' => $role->getLabel()];
