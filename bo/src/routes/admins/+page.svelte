@@ -2,13 +2,13 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { ApiError } from '#lib/api/client';
-  import { uiLanguage } from '#lib/api/locales';
-  import { boApi, currentBo } from '#lib/api/session';
+  import { ApiError } from '$lib/api/client';
+  import { uiLanguage } from '$lib/api/locales';
+  import { boApi, currentBo } from '$lib/api/session';
   import {
     invitationCopy, isAssignableBoRole,
     type PendingInvitation, type PendingInvitationsResponse, type InvitationCreateResponse
-  } from '#lib/modules/admins/invitations';
+  } from '$lib/modules/admins/invitations';
 
   let ready = $state(false);
   let email = $state('');
