@@ -3,7 +3,8 @@
     "name": "Admins",
     "dependencies": {
         "roles": "*",
-        "acls": "*"
+        "acls": "*",
+        "languages": "*"
     },
     "tables": [
         "symsvel_admins"
