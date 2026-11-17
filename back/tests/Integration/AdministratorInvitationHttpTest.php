@@ -34,6 +34,7 @@ use SymSvel\Module\Auth\Token\AccessTokenRecord;
 use SymSvel\Module\Auth\Token\AccessTokenVerifier;
 use SymSvel\Module\Auth\Token\DbalAdminInvitationStore;
 use SymSvel\Module\Auth\Token\TokenSubject;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
 use SymSvel\Module\Mails\Mail\ConfiguredMailSender;
 use SymSvel\Module\Mails\Mail\MailSender;
 use SymSvel\Module\Mails\Mail\MailTemplateRegistry;
@@ -71,6 +72,7 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertInstanceOf(Admin::class, $admin);
         self::assertTrue($admin->isInvitationPending());
         self::assertSame('ROLE_ADMIN', $admin->getRoleCode());
+        self::assertSame('fr', $admin->getLanguage());
         self::assertNull($admin->getEmailVerifiedAt());
         self::assertSame(1, count($messages));
         self::assertSame('invited@example.test', $messages[0]->getTo()[0]->getAddress());
@@ -209,6 +211,12 @@ final class AdministratorInvitationHttpTest extends TestCase
         $settings->set('auth.bo_invitation_url', 'https://bo.example.test/activate');
         $settings->flush();
 
+        $db->executeStatement('CREATE TABLE symsvel_languages (iso_code VARCHAR(4) PRIMARY KEY, name VARCHAR(100), active BOOLEAN, pre_open BOOLEAN)');
+        $db->insert('symsvel_languages', ['iso_code' => 'fr', 'name' => 'Français', 'active' => true, 'pre_open' => false]);
+        $languageSettings = $this->createMock(SettingManager::class);
+        $languageSettings->method('get')->with('languages.primary_language')->willReturn('fr');
+        $languages = new LanguageCatalog($db, $languageSettings);
+
         $messages = new \ArrayObject();
         $mailer = $this->createMock(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(
@@ -246,7 +254,7 @@ final class AdministratorInvitationHttpTest extends TestCase
             public function findAccessByHash(string $hash): ?AccessTokenRecord { return $this->records[$hash] ?? null; }
         };
         $auth = new AuthenticatedTokenResolver(new AccessTokenVerifier($lookup), new AdminIdentityProvider($admins));
-        $controller = new AdministratorInvitationController($auth, $admins, new AclAuthorizer($db), $manager);
+        $controller = new AdministratorInvitationController($auth, $admins, new AclAuthorizer($db), $manager, $languages);
 
         return [$controller, $db, $admins, $messages];
     }
