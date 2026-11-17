@@ -23,6 +23,12 @@ use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
 use SymSvel\Module\Languages\Service\LanguageCatalog;
 use SymSvel\Module\Settings\Service\SettingManager;
+use SymSvel\Module\Settings\Entity\Setting;
+use SymSvel\Module\Settings\Repository\SettingRepository;
+use SymSvel\Module\Settings\Service\SettingRegistry;
+use SymSvel\Module\Settings\Service\SettingSecretCipher;
+use SymSvel\Module\Settings\Service\SettingKeyQualifier;
+use SymSvel\Module\Languages\Service\LanguagesSettingDefinitionProvider;
 use SymSvel\Module\Roles\Entity\Role;
 use SymSvel\Module\Roles\Repository\RoleRepository;
 
@@ -37,12 +43,14 @@ final class AdministratorAccountControllerTest extends TestCase
         $config = ORMSetup::createAttributeMetadataConfiguration([
             dirname((new \ReflectionClass(Admin::class))->getFileName()),
             dirname((new \ReflectionClass(Role::class))->getFileName()),
+            dirname((new \ReflectionClass(Setting::class))->getFileName()),
         ], true);
         $config->enableNativeLazyObjects(true);
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $em = new EntityManager($db, $config);
         (new SchemaTool($em))->createSchema([
             $em->getClassMetadata(Admin::class), $em->getClassMetadata(Role::class),
+            $em->getClassMetadata(Setting::class),
         ]);
         $schema = new Schema();
         AuthTokenSchema::apply($schema);
@@ -64,7 +72,9 @@ final class AdministratorAccountControllerTest extends TestCase
         $em->clear();
 
         $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManagerForClass')->with(Role::class)->willReturn($em);
+        $registry->method('getManagerForClass')->willReturnCallback(
+            static fn (string $class) => in_array($class, [Role::class, Setting::class], true) ? $em : null,
+        );
         $decision = $status === 200
             ? new BoAccessDecision(200, $asTarget ? $targetId : $developerId, $asTarget ? 'ROLE_ADMIN' : 'ROLE_DEV')
             : new BoAccessDecision($status);
@@ -78,10 +88,19 @@ final class AdministratorAccountControllerTest extends TestCase
                 return $this->decision;
             }
         };
+        // Use the real Settings service: it is final and must not be mocked.
+        $settingsRegistry = new SettingRegistry([]);
+        $settingsRegistry->registerOwned(new LanguagesSettingDefinitionProvider(), 'languages', new SettingKeyQualifier());
+        $settingsManager = new SettingManager($settingsRegistry, new SettingRepository($registry),
+            $em, new SettingSecretCipher('test-secret-at-least-16-chars'));
+        $settingsManager->set('languages.primary_language', 'fr');
+        $settingsManager->flush();
+        $db->executeStatement('CREATE TABLE symsvel_languages (iso_code VARCHAR(4) PRIMARY KEY, name VARCHAR(100), active BOOLEAN, pre_open BOOLEAN)');
+        $db->insert('symsvel_languages', ['iso_code' => 'fr', 'name' => 'Français', 'active' => true, 'pre_open' => false]);
         $controller = new AdministratorAccountController(
             $gate, $db, new AclAuthorizer($db), new RoleRepository($registry),
             new TokenSessionRevoker(new DbalTokenStore($db)),
-            new LanguageCatalog($db, $this->createMock(SettingManager::class)),
+            new LanguageCatalog($db, $settingsManager),
         );
         return [$controller, $em, $developerId, $targetId];
     }
