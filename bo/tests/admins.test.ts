@@ -21,7 +21,8 @@ describe('admins module', () => {
   it('provides localized labels without hardcoding messages in Svelte', () => {
     expect(invitationCopy('fr-FR').send).toBe('Envoyer l’invitation');
     expect(invitationCopy('en-GB').send).toBe('Send invitation');
-    expect(invitationCopy(null).send).toBe('Send invitation');
+    expect(invitationCopy(null).send).toBe('Envoyer l’invitation');
+    expect(invitationCopy('es-ES').send).toBe('Envoyer l’invitation');
   });
 });
 
