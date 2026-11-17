@@ -23,7 +23,7 @@ final readonly class PendingAdministratorCreator
     ) {
     }
 
-    public function create(string $email, string $roleCode): Admin
+    public function create(string $email, string $roleCode, ?string $language = null): Admin
     {
         $email = trim($email);
         $roleCode = trim($roleCode);
@@ -40,6 +40,7 @@ final readonly class PendingAdministratorCreator
         }
 
         $admin = Admin::invited($email, $roleCode);
+        $admin->setLanguage($language);
         $this->entityManager->persist($admin);
         $this->entityManager->flush();
 
