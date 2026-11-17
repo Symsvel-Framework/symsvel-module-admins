@@ -77,7 +77,8 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertNull($admin->getEmailVerifiedAt());
         self::assertSame(1, count($messages));
         self::assertSame('invited@example.test', $messages[0]->getTo()[0]->getAddress());
-        self::assertStringContainsString('https://bo.example.test/auth/activate?token=', (string) $messages[0]->getTextBody());
+        // Local .test domains intentionally use HTTP in dev; production remains HTTPS.
+        self::assertStringContainsString('http://bo.example.test/auth/activate?token=', (string) $messages[0]->getTextBody());
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_admin_invitations'));
 
         $listed = $controller->list(self::get('/apibo/admins/invitations', self::DEV_TOKEN));
