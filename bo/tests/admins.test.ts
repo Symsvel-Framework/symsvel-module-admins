@@ -13,7 +13,7 @@ describe('admins module', () => {
     }
   });
   it('protects the developer and current administrator from UI mutations', () => {
-    const base = { id: 2, role_code: 'ROLE_ADMIN', email: 'other@example.test', enabled: true, invitation_pending: false, email_verified: true, created_at: '2026-11-16' };
+    const base = { id: 2, role_code: 'ROLE_ADMIN', language: 'fr', email: 'other@example.test', enabled: true, invitation_pending: false, email_verified: true, created_at: '2026-11-16' };
     expect(canMaintainBoAdmin(base, 1)).toBe(true);
     expect(canMaintainBoAdmin(base, 2)).toBe(false);
     expect(canMaintainBoAdmin({ ...base, role_code: 'ROLE_DEV' }, 1)).toBe(false);
