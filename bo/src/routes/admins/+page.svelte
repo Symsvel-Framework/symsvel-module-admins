@@ -25,7 +25,10 @@
   let editing = $state<BoAdminAccount | null>(null);
   let email = $state('');
   let role = $state('');
-  let locale = $state<'fr' | 'en'>('fr');
+  let accountLanguage = $state('');
+  let editLanguage = $state('');
+  let activeLanguages = $state<{ iso_code: string; name: string; primary: boolean }[]>([]);
+  let languagesError = $state('');
   let newRole = $state('');
   let newEnabled = $state(true);
   let busy = $state(false);
@@ -140,6 +143,25 @@
     }
   }
 
+  function selectedLanguage(code: string | null): string {
+    return activeLanguages.length === 1
+      ? (activeLanguages.find((item) => item.primary)?.iso_code ?? activeLanguages[0].iso_code)
+      : (code && activeLanguages.some((item) => item.iso_code === code) ? code
+        : (activeLanguages.find((item) => item.primary)?.iso_code ?? activeLanguages[0]?.iso_code ?? ''));
+  }
+
+  async function loadLanguages(): Promise<void> {
+    languagesError = '';
+    try {
+      const response = await boApi<{ data: { iso_code: string; name: string; primary: boolean }[] }>('/apibo/languages/account-options');
+      activeLanguages = Array.isArray(response.data) ? response.data : [];
+      if (!activeLanguages.length) languagesError = t.failure;
+    } catch (cause) {
+      languagesError = explain(cause);
+      activeLanguages = [];
+    }
+  }
+
   async function loadRoles(): Promise<void> {
     rolesLoading = true;
     rolesError = '';
@@ -158,12 +180,13 @@
     currentId = shell.identity?.id ?? null;
     void refresh();
     void loadRoles();
+    void loadLanguages();
   });
 
   function openInvite(): void {
     email = '';
     role = '';
-    locale = language.toLowerCase().startsWith('fr') ? 'fr' : 'en';
+    accountLanguage = selectedLanguage(null);
     error = '';
     showInvite = true;
     void loadRoles();
@@ -179,7 +202,7 @@
     try {
       await boApi<InvitationCreateResponse>('/apibo/admins/invitations', {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim(), role_code: role.trim(), locale })
+        body: JSON.stringify({ email: email.trim(), role_code: role.trim(), language: selectedLanguage(accountLanguage), locale: selectedLanguage(accountLanguage).startsWith('fr') ? 'fr' : 'en' })
       });
       showInvite = false;
       message = t.success;
@@ -199,7 +222,7 @@
     resending = id;
     try {
       await boApi<{status: string}>(`/apibo/admins/${id}/invitations/resend`, {
-        method: 'POST', body: JSON.stringify({ locale: language.toLowerCase().startsWith('fr') ? 'fr' : 'en' })
+        method: 'POST', body: JSON.stringify({ locale: (invitations.find((item) => item.id === id)?.language ?? selectedLanguage(null)).startsWith('fr') ? 'fr' : 'en' })
       });
       message = t.resent;
       await refresh();
@@ -214,6 +237,7 @@
     if (!canMaintainBoAdmin(account, currentId)) return;
     editing = account;
     newRole = account.role_code;
+    editLanguage = selectedLanguage(account.language);
     newEnabled = account.enabled;
     error = '';
     message = '';
@@ -228,7 +252,7 @@
     message = '';
     try {
       await boApi<{status: string}>('/apibo/admins/' + editing.id, {
-        method: 'PATCH', body: JSON.stringify({ role_code: newRole, enabled: newEnabled })
+        method: 'PATCH', body: JSON.stringify({ role_code: newRole, enabled: newEnabled, language: selectedLanguage(editLanguage) })
       });
       editing = null;
       message = t.updated;
@@ -338,13 +362,18 @@
       {#if !rolesLoading && !rolesError && availableRoles.length === 0}
         <Alert kind="info">{t.noRoles}</Alert>
       {/if}
-      <label for="invitation-locale">{t.locale}</label>
-      <select id="invitation-locale" bind:value={locale}>
-        <option value="fr">{t.fr}</option><option value="en">{t.en}</option>
-      </select>
+      {#if activeLanguages.length > 1}
+        <label for="new-admin-language">{t.accountLanguage}</label>
+        <select id="new-admin-language" bind:value={accountLanguage} required>
+          {#each activeLanguages as item (item.iso_code)}
+            <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
+          {/each}
+        </select>
+      {/if}
+      {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
       <div class="modal-actions">
         <Button type="button" variant="secondary" onclick={() => showInvite = false}>{t.cancel}</Button>
-        <Button type="submit" disabled={busy || rolesLoading || !roleIsSelectable(role, availableRoles)}>{busy ? t.sending : t.send}</Button>
+        <Button type="submit" disabled={busy || rolesLoading || activeLanguages.length === 0 || !roleIsSelectable(role, availableRoles)}>{busy ? t.sending : t.send}</Button>
       </div>
     </form>
   </Modal>
@@ -363,6 +392,15 @@
             <option value={item.code}>{item.label} ({item.code})</option>
           {/each}
         </select>
+        {#if activeLanguages.length > 1}
+          <label for="edit-admin-language">{t.accountLanguage}</label>
+          <select id="edit-admin-language" bind:value={editLanguage} required>
+            {#each activeLanguages as item (item.iso_code)}
+              <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
+            {/each}
+          </select>
+        {/if}
+        {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
         <label for="edit-admin-enabled">{t.state}</label>
         <select id="edit-admin-enabled" bind:value={newEnabled}>
           <option value={true}>{t.active}</option>
@@ -370,7 +408,7 @@
         </select>
         <div class="modal-actions">
           <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
-          <Button type="submit" disabled={busy}>{t.save}</Button>
+          <Button type="submit" disabled={busy || activeLanguages.length === 0}>{t.save}</Button>
         </div>
       </form>
     {/if}
