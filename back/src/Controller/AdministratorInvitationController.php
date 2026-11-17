@@ -12,6 +12,7 @@ use SymSvel\Module\Admins\Entity\Admin;
 use SymSvel\Module\Admins\Repository\AdminRepository;
 use SymSvel\Module\Admins\Service\AdministratorInvitationManager;
 use SymSvel\Module\Auth\Identity\AuthenticatedTokenResolver;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
 
 /**
  * BO-only invitation endpoints. Auth resolves the current principal, ACLs
@@ -24,6 +25,7 @@ final readonly class AdministratorInvitationController
         private AdminRepository $admins,
         private AclAuthorizer $acls,
         private AdministratorInvitationManager $invitations,
+        private LanguageCatalog $languages,
     ) {
     }
 
@@ -46,6 +48,7 @@ final readonly class AdministratorInvitationController
                 'id' => $admin->getId(),
                 'email' => $admin->getEmail(),
                 'role_code' => $admin->getRoleCode(),
+                'language' => $admin->getLanguage(),
                 'enabled' => $admin->isEnabled(),
                 'created_at' => $admin->getCreatedAt()->format(\DateTimeInterface::ATOM),
             ], $pending),
@@ -68,7 +71,10 @@ final readonly class AdministratorInvitationController
         $email = $data['email'] ?? null;
         $roleCode = $data['role_code'] ?? null;
         $locale = $data['locale'] ?? 'fr';
-        if (!is_string($email) || !is_string($roleCode) || !is_string($locale)
+        $requestedLanguage = $data['language'] ?? null;
+        if (array_diff(array_keys($data), ['email', 'role_code', 'locale', 'language'])
+            || ($requestedLanguage !== null && !is_string($requestedLanguage))
+            || !is_string($email) || !is_string($roleCode) || !is_string($locale)
             || !in_array($locale, ['fr', 'en'], true)
             || filter_var(trim($email), FILTER_VALIDATE_EMAIL) === false
             || strlen(trim($email)) > 254
@@ -80,8 +86,9 @@ final readonly class AdministratorInvitationController
         }
 
         try {
+            $language = $this->languages->resolveAccountLanguage($requestedLanguage);
             $id = $this->invitations->invite(
-                $email, $roleCode, $locale, new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                $email, $roleCode, $locale, new \DateTimeImmutable('now', new \DateTimeZone('UTC')), $language,
             );
         } catch (\InvalidArgumentException) {
             return self::response(['error' => ['code' => 'invalid_request']], 400);
