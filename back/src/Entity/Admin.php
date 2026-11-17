@@ -35,6 +35,10 @@ class Admin
     #[ORM\Column(name: 'invitation_pending', options: ['default' => false])]
     private bool $invitationPending = false;
 
+    /** ISO 639 language code; deliberately no foreign key to Languages. */
+    #[ORM\Column(name: 'language', length: 4, nullable: true)]
+    private ?string $language = null;
+
     #[ORM\Column(name: 'email_verified_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $emailVerifiedAt = null;
 
@@ -82,6 +86,19 @@ class Admin
         if ($this->emailVerifiedAt === null) {
             $this->emailVerifiedAt = new \DateTimeImmutable();
         }
+    }
+
+    public function getLanguage(): ?string { return $this->language; }
+
+    public function setLanguage(?string $language): void
+    {
+        if ($language !== null) {
+            $language = strtolower(trim($language));
+            if (preg_match('/^[a-z]{2,4}$/D', $language) !== 1) {
+                throw new \InvalidArgumentException('Invalid ISO language code.');
+            }
+        }
+        $this->language = $language;
     }
 
     public function getId(): ?int { return $this->id; }
