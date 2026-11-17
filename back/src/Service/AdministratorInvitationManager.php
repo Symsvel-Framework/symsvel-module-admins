@@ -21,9 +21,9 @@ final readonly class AdministratorInvitationManager
     ) {
     }
 
-    public function invite(string $email, string $roleCode, string $locale, \DateTimeImmutable $now): int
+    public function invite(string $email, string $roleCode, string $locale, \DateTimeImmutable $now, ?string $language = null): int
     {
-        $admin = $this->creator->create($email, $roleCode);
+        $admin = $this->creator->create($email, $roleCode, $language);
         $id = $admin->getId();
         if ($id === null) {
             throw new \LogicException('Pending administrator was not persisted.');
