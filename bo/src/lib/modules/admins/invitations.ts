@@ -2,6 +2,7 @@ export type BoAdminAccount = {
   id: number;
   email: string;
   role_code: string;
+  language: string | null;
   enabled: boolean;
   invitation_pending: boolean;
   email_verified: boolean;
@@ -39,7 +40,7 @@ const copy = {
     email: 'Adresse e-mail', role: 'Rôle',
     roleHint: 'Seuls les rôles existants que vous avez le droit d’attribuer sont proposés.',
     chooseRole: 'Choisir un rôle', noRoles: 'Aucun rôle attribuable. Vérifiez les rôles et vos ACL.',
-    locale: 'Langue de l’invitation', fr: 'Français', en: 'Anglais',
+    accountLanguage: 'Langue du compte', locale: 'Langue de l’invitation', fr: 'Français', en: 'Anglais',
     send: 'Envoyer l’invitation', sending: 'Envoi…',
     pending: 'Invitations en attente', reload: 'Actualiser', loading: 'Chargement…',
     empty: 'Aucune invitation en attente.', date: 'Créée le', state: 'État',
@@ -63,7 +64,7 @@ const copy = {
     email: 'Email address', role: 'Role',
     roleHint: 'Only existing roles you may assign are available.',
     chooseRole: 'Choose a role', noRoles: 'No assignable roles. Check Roles and your ACLs.',
-    locale: 'Invitation language', fr: 'French', en: 'English',
+    accountLanguage: 'Account language', locale: 'Invitation language', fr: 'French', en: 'English',
     send: 'Send invitation', sending: 'Sending…',
     pending: 'Pending invitations', reload: 'Refresh', loading: 'Loading…',
     empty: 'No pending invitations.', date: 'Created', state: 'Status',
