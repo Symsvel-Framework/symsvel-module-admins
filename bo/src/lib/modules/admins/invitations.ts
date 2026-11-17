@@ -17,6 +17,7 @@ export type PendingInvitation = {
   id: number;
   email: string;
   role_code: string;
+  language: string | null;
   enabled: boolean;
   created_at: string;
 };
