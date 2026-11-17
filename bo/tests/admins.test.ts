@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { moduleId } from '../src/lib/modules/admins';
-import { invitationCopy, isAssignableBoRole, canMaintainBoAdmin } from '../src/lib/modules/admins/invitations';
+import { invitationCopy, isAssignableBoRole, canMaintainBoAdmin, type PendingInvitation } from '../src/lib/modules/admins/invitations';
 
 describe('admins module', () => {
   it('exports its identifier', () => { expect(moduleId).toBe('admins'); });
@@ -17,6 +17,13 @@ describe('admins module', () => {
     expect(canMaintainBoAdmin(base, 1)).toBe(true);
     expect(canMaintainBoAdmin(base, 2)).toBe(false);
     expect(canMaintainBoAdmin({ ...base, role_code: 'ROLE_DEV' }, 1)).toBe(false);
+  });
+  it('models the ISO language returned for pending invitations', () => {
+    const invitation: PendingInvitation = {
+      id: 7, email: 'new@example.test', role_code: 'ROLE_ADMIN',
+      language: 'fr', enabled: true, created_at: '2026-11-17T06:00:00+00:00'
+    };
+    expect(invitation.language).toBe('fr');
   });
   it('provides localized labels without hardcoding messages in Svelte', () => {
     expect(invitationCopy('fr-FR').send).toBe('Envoyer l’invitation');
