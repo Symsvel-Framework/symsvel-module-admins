@@ -84,5 +84,5 @@ const copy = {
 };
 export type InvitationCopy = (typeof copy)['fr'];
 export function invitationCopy(language: string | null): InvitationCopy {
-  return language?.toLowerCase().split('-')[0] === 'fr' ? copy.fr : copy.en;
+  return language?.toLowerCase().split('-')[0] === 'en' ? copy.en : copy.fr;
 }
