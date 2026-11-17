@@ -13,7 +13,8 @@
         "symsvel-framework/module-mails": "dev-dev",
         "symsvel-framework/module-settings": "dev-dev",
         "symsvel-framework/module-roles": "dev-dev",
-        "symsvel-framework/module-acls": "dev-dev"
+        "symsvel-framework/module-acls": "dev-dev",
+        "symsvel-framework/module-languages": "dev-dev"
     },
     "autoload": {
         "psr-4": {
@@ -62,6 +63,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/Symsvel-Framework/symsvel-module-settings.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-languages.git"
         },
         {
             "type": "composer",
