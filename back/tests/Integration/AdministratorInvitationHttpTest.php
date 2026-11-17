@@ -28,13 +28,14 @@ use SymSvel\Module\Auth\Identity\AuthenticatedTokenResolver;
 use SymSvel\Module\Auth\Mail\AuthMailTemplateProvider;
 use SymSvel\Module\Auth\Schema\AdminInvitationSchema;
 use SymSvel\Module\Auth\Service\AdminInvitationUrlResolver;
-use SymSvel\Module\Auth\Service\AuthSettingDefinitionProvider;
+use SymSvel\Module\Auth\Service\AuthPageUrls;
 use SymSvel\Module\Auth\Token\AccessTokenLookup;
 use SymSvel\Module\Auth\Token\AccessTokenRecord;
 use SymSvel\Module\Auth\Token\AccessTokenVerifier;
 use SymSvel\Module\Auth\Token\DbalAdminInvitationStore;
 use SymSvel\Module\Auth\Token\TokenSubject;
 use SymSvel\Module\Languages\Service\LanguageCatalog;
+use SymSvel\Module\Languages\Service\LanguagesSettingDefinitionProvider;
 use SymSvel\Module\Mails\Mail\ConfiguredMailSender;
 use SymSvel\Module\Mails\Mail\MailSender;
 use SymSvel\Module\Mails\Mail\MailTemplateRegistry;
@@ -76,6 +77,7 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertNull($admin->getEmailVerifiedAt());
         self::assertSame(1, count($messages));
         self::assertSame('invited@example.test', $messages[0]->getTo()[0]->getAddress());
+        self::assertStringContainsString('https://bo.example.test/auth/activate?token=', (string) $messages[0]->getTextBody());
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_admin_invitations'));
 
         $listed = $controller->list(self::get('/apibo/admins/invitations', self::DEV_TOKEN));
@@ -202,20 +204,19 @@ final class AdministratorInvitationHttpTest extends TestCase
 
         $settingsRegistry = new SettingRegistry([]);
         $qualifier = new SettingKeyQualifier();
-        $settingsRegistry->registerOwned(new AuthSettingDefinitionProvider(), 'auth', $qualifier);
+        $settingsRegistry->registerOwned(new LanguagesSettingDefinitionProvider(), 'languages', $qualifier);
         $settingsRegistry->registerOwned(new MailsSettingDefinitionProvider(), 'mails', $qualifier);
         $settings = new SettingManager(
             $settingsRegistry, $settingRepository, $em, new SettingSecretCipher('test-secret-at-least-16-chars'),
         );
         $settings->set('mails.sender_email', 'noreply@example.test');
-        $settings->set('auth.bo_invitation_url', 'https://bo.example.test/activate');
+        $settings->set('mails.transport', 'mailpit');
+        $settings->set('languages.primary_language', 'fr');
         $settings->flush();
 
         $db->executeStatement('CREATE TABLE symsvel_languages (iso_code VARCHAR(4) PRIMARY KEY, name VARCHAR(100), active BOOLEAN, pre_open BOOLEAN)');
         $db->insert('symsvel_languages', ['iso_code' => 'fr', 'name' => 'Français', 'active' => true, 'pre_open' => false]);
-        $languageSettings = $this->createMock(SettingManager::class);
-        $languageSettings->method('get')->with('languages.primary_language')->willReturn('fr');
-        $languages = new LanguageCatalog($db, $languageSettings);
+        $languages = new LanguageCatalog($db, $settings);
 
         $messages = new \ArrayObject();
         $mailer = $this->createMock(MailerInterface::class);
@@ -229,7 +230,7 @@ final class AdministratorInvitationHttpTest extends TestCase
             new Environment($loader, ['autoescape' => 'name']),
         );
         $dispatch = new AdminInvitationDispatch(
-            new AdminInvitationUrlResolver($settings),
+            new AdminInvitationUrlResolver(new AuthPageUrls('dev', 'example.test')),
             new DbalAdminInvitationStore($db),
             $renderer,
             new ConfiguredMailSender(new MailSender($mailer), $settings),
