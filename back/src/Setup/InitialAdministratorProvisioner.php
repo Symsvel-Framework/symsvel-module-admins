@@ -17,18 +17,19 @@ final class InitialAdministratorProvisioner
     ) {
     }
 
-    public function provision(string $email, string $passwordHash, string $roleCode): void
+    public function provision(string $email, string $passwordHash, string $roleCode, ?string $language = null): void
     {
         if ($roleCode !== 'ROLE_DEV') {
             throw new \InvalidArgumentException('Initial administrator must have the developer role.');
         }
         $candidate = new Admin($email, $passwordHash);
+        $candidate->setLanguage($language);
         $existing = $this->admins->findOneBy(['email' => $candidate->getEmail()]);
         if ($existing !== null) {
             if ($existing->getRoleCode() !== 'ROLE_DEV' || !hash_equals($existing->getPasswordHash(), $passwordHash)) {
                 throw new \RuntimeException('Existing administrator differs from staged setup credentials.');
             }
-            $this->trustExistingBootstrap($existing);
+            $this->trustExistingBootstrap($existing, $language);
             return;
         }
         if ($this->admins->count([]) > 0) {
@@ -39,15 +40,18 @@ final class InitialAdministratorProvisioner
         $this->entityManager->flush();
     }
     /** Only called after a guarded local Setup has verified the existing credentials. */
-    public function trustExistingBootstrap(Admin $admin): void
+    public function trustExistingBootstrap(Admin $admin, ?string $language = null): void
     {
         if ($admin->getRoleCode() !== 'ROLE_DEV' || $this->admins->count([]) !== 1) {
             throw new \RuntimeException('Cannot trust a non-initial administrator.');
         }
-        if ($admin->getEmailVerifiedAt() === null) {
-            $admin->trustEmailFromLocalSetup();
-            $this->entityManager->flush();
+        $changed = $admin->getEmailVerifiedAt() === null;
+        if ($changed) $admin->trustEmailFromLocalSetup();
+        if ($admin->getLanguage() === null && $language !== null) {
+            $admin->setLanguage($language);
+            $changed = true;
         }
+        if ($changed) $this->entityManager->flush();
     }
 
 }
