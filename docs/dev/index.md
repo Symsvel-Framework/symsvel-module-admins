@@ -295,3 +295,9 @@ L'entité Admin possède un champ `language` nullable de quatre caractères maxi
 Les libellés intégrés de l'interface sont sélectionnés à partir de la langue d'interface (code ISO du navigateur ou du compte). Lorsque la locale n'a pas de dictionnaire intégré, les libellés français sont utilisés ; l'anglais reste disponible explicitement pour `en`. Le fallback ne modifie ni la langue ISO du site ni celle du compte et n'impose pas l'existence de traductions avant l'installation. Le repli doit être réalisé à la clé lors de l'introduction des dictionnaires dynamiques ; l'éditeur BO des traductions et le chargement fichier/BDD ne sont pas fournis par cette seule correction.
 
 Vérifications : tests de sélection FR/EN/autres locales et tests de build/CI. La validation finale nécessite les crash-tests locaux sur le parcours Setup, BO et App.
+
+## Correction des fixtures de CI Admins (17/11/2026)
+
+Les tests d'intégration `AdministratorAccountControllerTest` et `AdministratorInvitationHttpTest` utilisent désormais de vrais objets `SettingManager` (classe `final`, donc non doublable par PHPUnit), avec le provider natif `LanguagesSettingDefinitionProvider` et une base SQLite en mémoire contenant les paramètres et le catalogue de langues. Les tests d'invitation n'essaient plus de renseigner l'ancien paramètre `auth.bo_invitation_url`, supprimé du registre : les liens sont produits par `AuthPageUrls` à partir du domaine de projet fiable. La fixture configure explicitement `mails.transport=mailpit` et vérifie que l'URL d'activation cible `/auth/activate`.
+
+Cette correction ne modifie aucun contrat de production ni ne réintroduit de paramètre Auth obsolète. La validation requiert la CI du dépôt puis le CT du parcours Setup et d'invitation.
