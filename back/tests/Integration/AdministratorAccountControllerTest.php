@@ -21,6 +21,8 @@ use SymSvel\Module\Auth\Schema\AdminInvitationSchema;
 use SymSvel\Module\Auth\Schema\AuthTokenSchema;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
+use SymSvel\Module\Settings\Service\SettingManager;
 use SymSvel\Module\Roles\Entity\Role;
 use SymSvel\Module\Roles\Repository\RoleRepository;
 
@@ -79,6 +81,7 @@ final class AdministratorAccountControllerTest extends TestCase
         $controller = new AdministratorAccountController(
             $gate, $db, new AclAuthorizer($db), new RoleRepository($registry),
             new TokenSessionRevoker(new DbalTokenStore($db)),
+            new LanguageCatalog($db, $this->createMock(SettingManager::class)),
         );
         return [$controller, $em, $developerId, $targetId];
     }
