@@ -12,6 +12,7 @@ use SymSvel\Module\Acls\Access\BoAccessGate;
 use SymSvel\Module\Acls\AclAuthorizer;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
 use SymSvel\Module\Auth\Token\TokenSubject;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
 use SymSvel\Module\Roles\Entity\Role;
 use SymSvel\Module\Roles\Repository\RoleRepository;
 
@@ -24,6 +25,7 @@ final readonly class AdministratorAccountController
         private AclAuthorizer $acls,
         private RoleRepository $roles,
         private TokenSessionRevoker $sessions,
+        private LanguageCatalog $languages,
     ) {
     }
 
@@ -35,12 +37,13 @@ final readonly class AdministratorAccountController
             return self::failure($decision->status);
         }
         $rows = $this->db->fetchAllAssociative(
-            'SELECT id, email, role_code, enabled, invitation_pending, email_verified_at, created_at FROM symsvel_admins ORDER BY id DESC LIMIT 200',
+            'SELECT id, email, role_code, language, enabled, invitation_pending, email_verified_at, created_at FROM symsvel_admins ORDER BY id DESC LIMIT 200',
         );
         return self::response(['data' => array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
             'email' => (string) $row['email'],
             'role_code' => (string) $row['role_code'],
+            'language' => $row['language'],
             'enabled' => (bool) $row['enabled'],
             'invitation_pending' => (bool) $row['invitation_pending'],
             'email_verified' => $row['email_verified_at'] !== null,
@@ -59,10 +62,14 @@ final readonly class AdministratorAccountController
         if ($payload instanceof JsonResponse) {
             return $payload;
         }
-        if ($payload === [] || array_diff(array_keys($payload), ['role_code', 'enabled'])) {
+        if ($payload === [] || array_diff(array_keys($payload), ['role_code', 'enabled', 'language'])) {
             return self::failure(400);
         }
         if (array_key_exists('enabled', $payload) && !is_bool($payload['enabled'])) {
+            return self::failure(400);
+        }
+        if (array_key_exists('language', $payload)
+            && !is_string($payload['language'])) {
             return self::failure(400);
         }
         if (array_key_exists('role_code', $payload)
@@ -73,7 +80,7 @@ final readonly class AdministratorAccountController
         }
 
         $target = $id > 0 ? $this->db->fetchAssociative(
-            'SELECT id, role_code, enabled FROM symsvel_admins WHERE id = ?', [$id],
+            'SELECT id, role_code, enabled, language FROM symsvel_admins WHERE id = ?', [$id],
         ) : false;
         if ($target === false) {
             return self::failure(404);
@@ -99,6 +106,18 @@ final readonly class AdministratorAccountController
         }
         if (array_key_exists('enabled', $payload) && $payload['enabled'] !== (bool) $target['enabled']) {
             $changes['enabled'] = $payload['enabled'];
+        }
+        if (array_key_exists('language', $payload)) {
+            try {
+                $resolvedLanguage = $this->languages->resolveAccountLanguage($payload['language']);
+            } catch (\InvalidArgumentException) {
+                return self::failure(400);
+            } catch (\DomainException) {
+                return self::failure(409);
+            }
+            if ($resolvedLanguage !== $target['language']) {
+                $changes['language'] = $resolvedLanguage;
+            }
         }
         if ($changes !== []) {
             $this->sessions->revokeWith(
