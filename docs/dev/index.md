@@ -301,3 +301,7 @@ Vérifications : tests de sélection FR/EN/autres locales et tests de build/CI. 
 Les tests d'intégration `AdministratorAccountControllerTest` et `AdministratorInvitationHttpTest` utilisent désormais de vrais objets `SettingManager` (classe `final`, donc non doublable par PHPUnit), avec le provider natif `LanguagesSettingDefinitionProvider` et une base SQLite en mémoire contenant les paramètres et le catalogue de langues. Les tests d'invitation n'essaient plus de renseigner l'ancien paramètre `auth.bo_invitation_url`, supprimé du registre : les liens sont produits par `AuthPageUrls` à partir du domaine de projet fiable. La fixture configure explicitement `mails.transport=mailpit` et vérifie que l'URL d'activation cible `/auth/activate`.
 
 Cette correction ne modifie aucun contrat de production ni ne réintroduit de paramètre Auth obsolète. La validation requiert la CI du dépôt puis le CT du parcours Setup et d'invitation.
+
+### Origine locale des liens d'invitation en CI (17/11/2026)
+
+La fixture d'invitation configure `AuthPageUrls('dev', 'example.test')`. En développement, le domaine local réservé `.test` produit intentionnellement `http://bo.example.test/auth/activate` ; le test d'intégration vérifie ce schéma HTTP. En production, l'origine par défaut demeure HTTPS. Aucune politique de sécurité ni logique métier n'a été changée : seule l'assertion de test incorrecte a été rectifiée.
