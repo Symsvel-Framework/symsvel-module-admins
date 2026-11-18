@@ -318,3 +318,5 @@ Les libellés du module Admins sont déclarés dans `bo/src/lib/translations/fr.
 ### Libellé administrateur du shell
 
 Le libellé d'identité du menu BO, même affiché par le shell natif, est déclaré dans Admins (`bo.admins.account.administrator`). Tooling le publie depuis les dictionnaires BO d'Admins, le shell le résout à la compilation, et Languages le répertorie sous le module propriétaire.
+
+Les assertions de dictionnaires vérifient explicitement les libellés du shell attribués à ce module, en plus de l'alignement des clés FR/EN. Le shell reste un consommateur des traductions et conserve ses fallbacks natifs.
