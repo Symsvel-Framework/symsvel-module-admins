@@ -314,3 +314,7 @@ La réponse `GET /apibo/admins/invitations` inclut le champ `language` (code ISO
 ## Dictionnaires BO (18/11/2026)
 
 Les libellés du module Admins sont déclarés dans `bo/src/lib/translations/fr.ts` et `en.ts`, avec des clés relatives au propriétaire. Tooling les installe sous `bo/src/lib/translations/admins/<lang>.ts` et enregistre `bo.admins.<clé>` dans Languages après migrations. Le helper du BO donne priorité aux traductions personnalisées. Tests, CI et CT XT nécessaires avant stabilisation.
+
+### Libellé administrateur du shell
+
+Le libellé d'identité du menu BO, même affiché par le shell natif, est déclaré dans Admins (`bo.admins.account.administrator`). Tooling le publie depuis les dictionnaires BO d'Admins, le shell le résout à la compilation, et Languages le répertorie sous le module propriétaire.

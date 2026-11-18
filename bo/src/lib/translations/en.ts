@@ -47,5 +47,8 @@ export default {
   "management": "Management",
   "protected": "Protected account",
   "session": "Session expired. Please sign in.",
-  "verifying": "Checking session…"
+  "verifying": "Checking session…",
+  "account": {
+    "administrator": "Administrator"
+  }
 } as const;

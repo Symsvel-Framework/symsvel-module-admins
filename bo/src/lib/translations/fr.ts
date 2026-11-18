@@ -47,5 +47,8 @@ export default {
   "management": "Gestion",
   "protected": "Compte protégé",
   "session": "Session expirée. Reconnectez-vous.",
-  "verifying": "Vérification de la session…"
+  "verifying": "Vérification de la session…",
+  "account": {
+    "administrator": "Administrateur"
+  }
 } as const;
