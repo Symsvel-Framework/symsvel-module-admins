@@ -1,3 +1,5 @@
+import { generatedTranslation } from '../../i18n/generated-translations';
+
 export type BoAdminAccount = {
   id: number;
   email: string;
@@ -85,5 +87,8 @@ const copy = {
 };
 export type InvitationCopy = (typeof copy)['fr'];
 export function invitationCopy(language: string | null): InvitationCopy {
-  return language?.toLowerCase().split('-')[0] === 'en' ? copy.en : copy.fr;
+  const base = language?.toLowerCase().split('-')[0] === 'en' ? copy.en : copy.fr;
+  return Object.fromEntries(Object.entries(base).map(([key, value]) => [
+    key, generatedTranslation(language, 'bo.admins.' + key) ?? value
+  ])) as InvitationCopy;
 }

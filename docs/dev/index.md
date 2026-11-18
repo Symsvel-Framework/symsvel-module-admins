@@ -309,3 +309,8 @@ La fixture d'invitation configure `AuthPageUrls('dev', 'example.test')`. En dév
 ### Contrat TypeScript des invitations BO (17/11/2026)
 
 La réponse `GET /apibo/admins/invitations` inclut le champ `language` (code ISO ou `null`). Le type `PendingInvitation` de l'interface BO déclare désormais `language: string | null`, comme le type `BoAdminAccount`. Le renvoi d'une invitation consulte ce champ pour choisir la langue du message, avec fallback sur la langue principale active si la valeur est absente. Le test Vitest du module inclut une fixture typée. Aucun contrat API ni stockage n'est modifié. Validation attendue : CI d'assemblage BO puis CT local.
+
+
+## Dictionnaires BO (18/11/2026)
+
+Les libellés du module Admins sont déclarés dans `bo/src/lib/translations/fr.ts` et `en.ts`, avec des clés relatives au propriétaire. Tooling les installe sous `bo/src/lib/translations/admins/<lang>.ts` et enregistre `bo.admins.<clé>` dans Languages après migrations. Le helper du BO donne priorité aux traductions personnalisées. Tests, CI et CT XT nécessaires avant stabilisation.
