@@ -9,6 +9,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Admins\Controller\AdminsPingController;
 use SymSvel\Module\Admins\Controller\AdministratorAccountController;
+use SymSvel\Module\Admins\Controller\AdministratorProfileController;
 use SymSvel\Module\Admins\Access\AdminBoAccessGate;
 use SymSvel\Module\Acls\Access\BoAccessGate;
 use SymSvel\Module\Admins\Controller\AdministratorInvitationController;
@@ -29,6 +30,9 @@ final class AdminsBundle extends AbstractBundle
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $builder->register(AdminsPingController::class, AdminsPingController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AdministratorProfileController::class, AdministratorProfileController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
         $builder->register(AdministratorAccountController::class, AdministratorAccountController::class)

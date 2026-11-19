@@ -35,3 +35,26 @@ Les tableaux Administrateurs et Invitations conservent leurs composants `DataTab
 Les surfaces, onglets, formulaires, bordures, textes secondaires et focus utilisent les variables CSS `--bo-*` du thème clair/sombre. La soumission continue à appeler l'API asynchrone et à préserver la page courante, sans rechargement complet. Les langues et rôles ne sont pas devinés depuis le navigateur ; les données sont celles du backend. CI et CT XT requis.
 
 Le Dropdown commun ne fournit pas de validation HTML `required` implicite comme `<select>` : les boutons des formulaires de création/modification conservent explicitement le blocage tant que la langue obligatoire n'est pas choisie (en contexte multilingue). Les contrôles d'entrée serveur restent inchangés.
+
+## Profil personnel BO (19/11/2026)
+
+`GET /apibo/admins/profile` retourne exclusivement l'administrateur
+identifié par le token BO et ses informations **non sensibles** : id, email,
+rôle, langue et état de vérification. Le mot de passe, ses empreintes,
+tokens et secrets ne sont jamais exposés. Aucun accès à la liste des
+administrateurs, ni permission de modifier leurs rôles, n'est nécessaire
+pour lire son propre profil.
+
+`PATCH /apibo/admins/profile` accepte **uniquement**
+`{"language":"fr"}` (ou une autre langue active résolue par Languages).
+L'identifiant vient du token BO, jamais du client : il est impossible
+de fournir un ID cible ou de modifier sa propre permission, l'activation,
+la validation du mail ou le rôle par ce chemin. L'opération utilise la
+vérification de session existante et respecte l'initialisation monolingue.
+
+**Champs de profil encore différés** : le changement d'email nécessite
+la confirmation sécurisée de la nouvelle boîte et le changement de
+mot de passe réutilisera les mécanismes Auth existants. Ils ne sont
+pas implicitement autorisés par ce premier endpoint. La route BO
+et le formulaire Svelte doivent être testés ensemble sur XT ; CI du
+module seule ne vaut pas validation de sécurité de bout en bout.
