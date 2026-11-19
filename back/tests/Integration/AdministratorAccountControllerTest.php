@@ -71,7 +71,7 @@ final class AdministratorAccountControllerTest extends TestCase
         $targetId = (int) $target->getId();
         $em->clear();
 
-        $registry = $this->createMock(ManagerRegistry::class);
+        $registry = $this->createStub(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturnCallback(
             static fn (string $class) => in_array($class, [Role::class, Setting::class], true) ? $em : null,
         );

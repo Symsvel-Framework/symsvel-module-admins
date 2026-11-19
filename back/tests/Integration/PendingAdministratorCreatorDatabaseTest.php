@@ -38,7 +38,7 @@ final class PendingAdministratorCreatorDatabaseTest extends TestCase
             $em->persist(new Role('ROLE_ADMIN', 'Administrator'));
             $em->flush();
 
-            $registry = $this->createMock(ManagerRegistry::class);
+            $registry = $this->createStub(ManagerRegistry::class);
             $registry->method('getManagerForClass')->willReturnCallback(
                 static fn (string $class): ?EntityManager => in_array($class, [Admin::class, Role::class], true) ? $em : null,
             );

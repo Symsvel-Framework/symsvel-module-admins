@@ -174,7 +174,7 @@ final class AdministratorInvitationHttpTest extends TestCase
             $db->executeStatement($sql);
         }
 
-        $registry = $this->createMock(ManagerRegistry::class);
+        $registry = $this->createStub(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturnCallback(
             static fn (string $class) => in_array($class, [Admin::class, Role::class, Setting::class], true) ? $em : null,
         );
@@ -220,7 +220,7 @@ final class AdministratorInvitationHttpTest extends TestCase
         $languages = new LanguageCatalog($db, $settings);
 
         $messages = new \ArrayObject();
-        $mailer = $this->createMock(MailerInterface::class);
+        $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(
             static function (RawMessage $message) use ($messages): void { $messages->append($message); },
         );
