@@ -24,13 +24,17 @@ final class AdministratorProfileControllerTest extends TestCase
 
     public function testBothRoutesAreAuthenticatedBoSelfProfileRoutes(): void
     {
-        foreach (['show' => 'GET', 'update' => 'PATCH'] as $method => $verb) {
+        foreach (['show' => ['GET', '/apibo/admins/profile'],
+                  'update' => ['PATCH', '/apibo/admins/profile'],
+                  'changePassword' => ['POST', '/apibo/admins/profile/password'],
+                  'requestEmailChange' => ['POST', '/apibo/admins/profile/email-change']]
+                 as $method => [$verb, $path]) {
             $attributes = (new \ReflectionMethod(AdministratorProfileController::class, $method))
                 ->getAttributes(Route::class);
             self::assertCount(1, $attributes);
             // Attribute metadata is not a Symfony\Component\\Routing\\Route object.
             $arguments = $attributes[0]->getArguments();
-            self::assertSame('/apibo/admins/profile', $arguments[0]);
+            self::assertSame($path, $arguments[0]);
             self::assertSame([$verb], $arguments['methods']);
         }
     }
