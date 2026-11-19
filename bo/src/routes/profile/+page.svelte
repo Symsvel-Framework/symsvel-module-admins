@@ -169,7 +169,7 @@
         <div><dt>{t.verification}</dt><dd>{profile.email_verified ? t.verified : t.unverified}</dd></div>
       </dl>
       <form onsubmit={save}>
-        <label class="field-label">{t.language}</label>
+        <p class="field-label">{t.language}</p>
         <Dropdown value={selected} {options} label={t.language}
           disabled={saving || languages.length < 2} onChange={(value) => { selected = value; }} />
         {#if languages.length > 1}

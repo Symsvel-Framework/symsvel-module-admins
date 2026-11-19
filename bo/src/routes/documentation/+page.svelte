@@ -71,8 +71,9 @@
 </script>
 
 {#snippet inline(text: string)}
-  {#each safeInlineLinks(text) as part}
+  {#each safeInlineLinks(text) as part, index (index)}
     {#if part.href}
+      <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
       <a href={part.href} rel="noopener noreferrer" target="_blank">{part.label}</a>
     {:else}
       {part.label}
@@ -96,7 +97,7 @@
   {#if entries.length > 0}
     <div class="docs-layout">
       <nav class="docs-menu" aria-label={t.select}>
-        {#each ['admin', 'user', 'dev'] as scope}
+        {#each ['admin', 'user', 'dev'] as scope (scope)}
           {#if entries.some((entry) => entry.scope === scope)}
             <h2>{scope === 'admin' ? t.admin : scope === 'user' ? t.user : t.dev}</h2>
             {#each entries.filter((entry) => entry.scope === scope) as item (item.id)}
