@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace SymSvel\Module\Admins\Controller;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
+use SymSvel\Module\Auth\Token\TokenSessionRevoker;
+use SymSvel\Module\Auth\Token\TokenSubject;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -21,6 +25,8 @@ final readonly class AdministratorProfileController
         private AdminRepository $admins,
         private EntityManagerInterface $entityManager,
         private LanguageCatalog $languages,
+        private Connection $db,
+        private TokenSessionRevoker $sessionRevoker,
     ) {
     }
 
@@ -61,6 +67,59 @@ final readonly class AdministratorProfileController
         return self::reply(['data' => self::present($admin)]);
     }
 
+
+    /**
+     * Self-service password change. Context and account identity come exclusively
+     * from the verified Bearer; no role or account-management ACL is required.
+     */
+    #[Route('/apibo/admins/profile/password', name: 'symsvel_admins_profile_password', methods: ['POST'], format: 'json')]
+    public function changePassword(Request $request): JsonResponse
+    {
+        $account = $this->self($request);
+        if ($account === null) return self::failure(401);
+        if (!str_starts_with(strtolower($request->headers->get('Content-Type', '')), 'application/json')
+            || strlen($request->getContent()) > 4096) return self::failure(400);
+        try {
+            $data = json_decode($request->getContent(), true, 4, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return self::failure(400);
+        }
+        if (!is_array($data) || array_is_list($data) || count($data) !== 2
+            || !is_string($data['current_password'] ?? null)
+            || !is_string($data['new_password'] ?? null)
+            || strlen($data['new_password']) < 12 || strlen($data['new_password']) > 1024
+            || str_contains($data['new_password'], "\0")
+            || strlen($data['current_password']) > 4096) {
+            return self::failure(400);
+        }
+        $oldHash = $account->getPasswordHash();
+        if (!password_verify($data['current_password'], $oldHash)
+            || password_verify($data['new_password'], $oldHash)) {
+            return self::failure(403);
+        }
+        $newHash = password_hash($data['new_password'], PASSWORD_ARGON2ID);
+        $subject = new TokenSubject('bo', (int) $account->getId());
+        try {
+            $this->sessionRevoker->revokeWith(
+                $subject,
+                new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                function () use ($subject, $oldHash, $newHash): void {
+                    $updated = $this->db->executeStatement(
+                        'UPDATE symsvel_admins SET password_hash = ? WHERE id = ? AND password_hash = ? AND enabled = ? AND invitation_pending = ?',
+                        [$newHash, $subject->id, $oldHash, true, false],
+                        [ParameterType::STRING, ParameterType::INTEGER, ParameterType::STRING, ParameterType::BOOLEAN, ParameterType::BOOLEAN],
+                    );
+                    if ($updated !== 1) {
+                        throw new \DomainException('Account credentials changed concurrently.');
+                    }
+                },
+            );
+        } catch (\DomainException) {
+            return self::failure(409);
+        }
+        return self::reply(['status' => 'updated']);
+    }
+
     private function self(Request $request): ?Admin
     {
         if (!preg_match('/^Bearer ([A-Za-z0-9_-]{43})$/D', $request->headers->get('Authorization', ''), $found)) {
@@ -90,7 +149,7 @@ final readonly class AdministratorProfileController
     private static function failure(int $status): JsonResponse
     {
         return self::reply(['error' => ['code' => match ($status) {
-            400 => 'invalid_request', 401 => 'unauthorized', 409 => 'unavailable',
+            400 => 'invalid_request', 401 => 'unauthorized', 403 => 'invalid_credentials', 409 => 'unavailable',
             default => 'unavailable',
         }]], $status);
     }
