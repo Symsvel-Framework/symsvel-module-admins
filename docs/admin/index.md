@@ -58,3 +58,20 @@ mot de passe réutilisera les mécanismes Auth existants. Ils ne sont
 pas implicitement autorisés par ce premier endpoint. La route BO
 et le formulaire Svelte doivent être testés ensemble sur XT ; CI du
 module seule ne vaut pas validation de sécurité de bout en bout.
+
+## Écran « Mon profil » BO (19/11/2026)
+
+La route Svelte `/profile` appartient au module Admins ; le menu du
+BO hôte propose le lien dans le menu du compte, **pas** dans la sidebar.
+L'écran lit `GET /apibo/admins/profile`, affiche email, rôle et
+vérification en lecture seule, puis charge les langues actives pour
+modifier uniquement la langue personnelle avec un `PATCH` asynchrone,
+sans rechargement du document. Le choix des langues utilise le Dropdown
+partagé du Design System. Les textes appartiennent à
+`bo/src/lib/translations/{fr,en}.ts` du module.
+
+Le changement d'adresse ou de mot de passe n'est pas implémenté par
+cet écran, tant que le parcours sécurisé ne garantit pas la
+confirmation de la nouvelle boîte ou de l'identité. Le CT doit
+valider un compte non-DEV, un compte ROLE_DEV, le choix monolingue,
+l'expiration de session et l'absence d'accès à un autre compte.

@@ -50,5 +50,23 @@ export default {
   "verifying": "Vérification de la session…",
   "account": {
     "administrator": "Administrateur"
+  },
+  "profile": {
+    "title": "Mon profil",
+    "intro": "Gérer les préférences de mon compte administrateur.",
+    "email": "Adresse e-mail",
+    "role": "Rôle",
+    "verified": "Confirmée",
+    "unverified": "À confirmer",
+    "verification": "Adresse e-mail",
+    "language": "Langue de mon compte",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Langue du compte enregistrée.",
+    "loading": "Chargement du profil…",
+    "error": "Impossible de charger ou d’enregistrer le profil.",
+    "session": "Session expirée. Reconnectez-vous.",
+    "back": "Tableau de bord",
+    "readonly": "La modification de l’adresse e-mail et du mot de passe nécessite un parcours de sécurité dédié."
   }
 } as const;

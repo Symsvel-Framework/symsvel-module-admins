@@ -50,5 +50,23 @@ export default {
   "verifying": "Checking session…",
   "account": {
     "administrator": "Administrator"
+  },
+  "profile": {
+    "title": "My profile",
+    "intro": "Manage my administrator account preferences.",
+    "email": "Email address",
+    "role": "Role",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "verification": "Email verification",
+    "language": "Account language",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Account language saved.",
+    "loading": "Loading profile…",
+    "error": "Unable to load or save profile.",
+    "session": "Session expired. Sign in again.",
+    "back": "Dashboard",
+    "readonly": "Changing email and password requires a dedicated security flow."
   }
 } as const;
