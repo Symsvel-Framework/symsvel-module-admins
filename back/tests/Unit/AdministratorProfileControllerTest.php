@@ -28,9 +28,10 @@ final class AdministratorProfileControllerTest extends TestCase
             $attributes = (new \ReflectionMethod(AdministratorProfileController::class, $method))
                 ->getAttributes(Route::class);
             self::assertCount(1, $attributes);
-            $route = $attributes[0]->newInstance();
-            self::assertSame('/apibo/admins/profile', $route->getPath());
-            self::assertSame([$verb], $route->getMethods());
+            // Attribute metadata is not a Symfony\Component\\Routing\\Route object.
+            $arguments = $attributes[0]->getArguments();
+            self::assertSame('/apibo/admins/profile', $arguments[0]);
+            self::assertSame([$verb], $arguments['methods']);
         }
     }
 }
