@@ -16,6 +16,11 @@
   let profile = $state<AdminSelfProfile | null>(null);
   let languages = $state<ProfileLanguage[]>([]);
   let selected = $state('');
+  let newEmail = $state('');
+  let emailPassword = $state('');
+  let emailBusy = $state(false);
+  let emailError = $state('');
+  let emailNotice = $state('');
   let currentPassword = $state('');
   let newPassword = $state('');
   let confirmPassword = $state('');
@@ -76,6 +81,37 @@
       error = explain(cause);
     } finally {
       saving = false;
+    }
+  }
+
+
+  async function changeEmail(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (emailBusy || !profile) return;
+    emailError = '';
+    emailNotice = '';
+    if (!newEmail.includes('@') || newEmail.trim().toLowerCase() === profile.email.toLowerCase()) {
+      emailError = t.emailChangeInvalid;
+      return;
+    }
+    emailBusy = true;
+    try {
+      await boApi<{ status: string }>('/apibo/admins/profile/email-change', {
+        method: 'POST',
+        body: JSON.stringify({
+          new_email: newEmail.trim(),
+          current_password: emailPassword,
+          locale: locale.toLowerCase().startsWith('fr') ? 'fr' : 'en'
+        })
+      });
+      newEmail = '';
+      emailPassword = '';
+      emailNotice = t.emailSent;
+    } catch (cause) {
+      emailError = cause instanceof ApiError && cause.status === 403
+        ? t.emailChangeInvalid : t.emailChangeUnavailable;
+    } finally {
+      emailBusy = false;
     }
   }
 
@@ -140,6 +176,23 @@
       {#if languages.length < 2}
         <p class="profile-note">{t.singleLanguage}</p>
       {/if}
+
+      <div class="profile-separator"></div>
+      <form onsubmit={changeEmail}>
+        <h2>{t.emailChangeTitle}</h2>
+        {#if emailError}<Alert kind="error">{emailError}</Alert>{/if}
+        {#if emailNotice}<Alert kind="success">{emailNotice}</Alert>{/if}
+        <label for="admin-email-new">{t.newEmail}</label>
+        <input id="admin-email-new" type="email" autocomplete="email" bind:value={newEmail}
+          required maxlength="254" disabled={emailBusy} />
+        <label for="admin-email-password">{t.emailCurrentPassword}</label>
+        <input id="admin-email-password" type="password" autocomplete="current-password"
+          bind:value={emailPassword} required disabled={emailBusy} />
+        <p class="profile-note">{t.emailChangeHelp}</p>
+        <Button type="submit" loading={emailBusy} disabled={emailBusy || !newEmail || !emailPassword}>
+          {t.sendEmailConfirmation}
+        </Button>
+      </form>
       <div class="profile-separator"></div>
       <form onsubmit={changePassword} autocomplete="off">
         <h2>{t.passwordTitle}</h2>
