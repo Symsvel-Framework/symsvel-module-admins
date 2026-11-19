@@ -188,3 +188,10 @@ mot de passe restent accessibles. Le choix linguistique seul est désactivé,
 et le bouton de sauvegarde des langues n'est pas affiché si aucune
 alternative active n'existe. Ce comportement évite de bloquer toute
 l'identité personnelle pour une simple préférence optionnelle.
+
+### Boutons sémantiques BO (19/11/2026)
+
+Supprimer est rouge ; confirmer une invitation ou une édition est vert. Les protections des comptes et ACL restent inchangées.
+Les couleurs sont fournies par les variantes centralisées du Design System BO,
+sans CSS spécifique au module. Les états désactivés restent neutres et lisibles.
+Tests CI et CT XT clair/sombre requis.
