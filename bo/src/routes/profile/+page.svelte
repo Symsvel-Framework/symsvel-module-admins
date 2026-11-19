@@ -49,12 +49,15 @@
     loading = true;
     error = '';
     try {
-      const [account, choices] = await Promise.all([
-        boApi<AdminSelfProfileResponse>('/apibo/admins/profile'),
-        api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true })
-      ]);
+      const account = await boApi<AdminSelfProfileResponse>('/apibo/admins/profile');
       profile = account.data;
-      languages = Array.isArray(choices.data) ? choices.data : [];
+      try {
+        const choices = await api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true });
+        languages = Array.isArray(choices.data) ? choices.data : [];
+      } catch {
+        // The personal account remains accessible if the language catalog is unavailable.
+        languages = [];
+      }
       selected = profile.language ?? languages.find((value) => value.primary)?.iso_code ?? '';
     } catch (cause) {
       error = explain(cause);
@@ -169,9 +172,11 @@
         <label class="field-label">{t.language}</label>
         <Dropdown value={selected} {options} label={t.language}
           disabled={saving || languages.length < 2} onChange={(value) => { selected = value; }} />
-        <Button type="submit" loading={saving} disabled={!selected || selected === profile.language || !options.length}>
-          {t.save}
-        </Button>
+        {#if languages.length > 1}
+          <Button type="submit" loading={saving} disabled={!selected || selected === profile.language || !options.length}>
+            {t.save}
+          </Button>
+        {/if}
       </form>
       {#if languages.length < 2}
         <p class="profile-note">{t.singleLanguage}</p>
