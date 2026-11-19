@@ -7,7 +7,7 @@
   import Dropdown from '../../../../components/Dropdown.svelte';
   import { languageFlag } from '../../../../components/dropdown';
   import { api, ApiError } from '../../../../api/client';
-  import { boApi } from '../../../../api/session';
+  import { boApi, logoutBo } from '../../../../api/session';
   import { uiLanguage } from '../../../../api/locales';
   import {
     adminProfileCopy, type AdminSelfProfile, type AdminSelfProfileResponse, type ProfileLanguage
@@ -16,6 +16,12 @@
   let profile = $state<AdminSelfProfile | null>(null);
   let languages = $state<ProfileLanguage[]>([]);
   let selected = $state('');
+  let currentPassword = $state('');
+  let newPassword = $state('');
+  let confirmPassword = $state('');
+  let passwordBusy = $state(false);
+  let passwordError = $state('');
+  let passwordNotice = $state('');
   let loading = $state(true);
   let saving = $state(false);
   let error = $state('');
@@ -72,6 +78,39 @@
       saving = false;
     }
   }
+
+  async function changePassword(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (passwordBusy) return;
+    passwordError = '';
+    passwordNotice = '';
+    if (newPassword !== confirmPassword) {
+      passwordError = t.passwordMismatch;
+      return;
+    }
+    if (newPassword.length < 12 || newPassword.length > 1024 || newPassword === currentPassword) {
+      passwordError = t.passwordLength;
+      return;
+    }
+    passwordBusy = true;
+    try {
+      await boApi<{ status: string }>('/apibo/admins/profile/password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      currentPassword = '';
+      newPassword = '';
+      confirmPassword = '';
+      passwordNotice = t.passwordSuccess;
+      await logoutBo();
+      await goto(resolve('/login'), { replaceState: true });
+    } catch (cause) {
+      passwordError = cause instanceof ApiError && cause.status === 403 ? t.passwordInvalid : explain(cause);
+    } finally {
+      passwordBusy = false;
+    }
+  }
+
 </script>
 
 <svelte:head><title>{t.title} | SymSvel BO</title></svelte:head>
@@ -98,7 +137,29 @@
           {t.save}
         </Button>
       </form>
-      <p class="profile-note">{t.readonly}</p>
+      {#if languages.length < 2}
+        <p class="profile-note">{t.singleLanguage}</p>
+      {/if}
+      <div class="profile-separator"></div>
+      <form onsubmit={changePassword} autocomplete="off">
+        <h2>{t.passwordTitle}</h2>
+        {#if passwordError}<Alert kind="error">{passwordError}</Alert>{/if}
+        {#if passwordNotice}<Alert kind="success">{passwordNotice}</Alert>{/if}
+        <label for="admin-password-current">{t.currentPassword}</label>
+        <input id="admin-password-current" type="password" autocomplete="current-password"
+          bind:value={currentPassword} required disabled={passwordBusy} />
+        <label for="admin-password-next">{t.newPassword}</label>
+        <input id="admin-password-next" type="password" autocomplete="new-password"
+          bind:value={newPassword} required minlength="12" maxlength="1024" disabled={passwordBusy} />
+        <label for="admin-password-confirm">{t.confirmPassword}</label>
+        <input id="admin-password-confirm" type="password" autocomplete="new-password"
+          bind:value={confirmPassword} required minlength="12" maxlength="1024" disabled={passwordBusy} />
+        <p class="profile-note">{t.passwordLength}</p>
+        <Button type="submit" loading={passwordBusy}
+          disabled={passwordBusy || !currentPassword || newPassword.length < 12 || newPassword !== confirmPassword}>
+          {t.passwordSave}
+        </Button>
+      </form>
     </section>
   {/if}
   <a href={resolve('/dashboard')}>{t.back}</a>
@@ -114,5 +175,11 @@
   dt, .field-label { color: var(--bo-muted); font-weight: 650; }
   dd { margin: 0; overflow-wrap: anywhere; }
   form { display: grid; gap: 12px; justify-items: stretch; }
+  form h2 { font-size: 1.05rem; margin: 0 0 4px; }
+  form label { font-weight: 650; }
+  form input { width: 100%; box-sizing: border-box; padding: 11px 13px;
+    border-radius: 8px; border: 1px solid var(--bo-border); background: var(--bo-surface-muted);
+    color: var(--bo-text); font: inherit; }
+  .profile-separator { border-top: 1px solid var(--bo-border); }
   .profile-note { margin: 0; font-size: 0.9rem; }
 </style>

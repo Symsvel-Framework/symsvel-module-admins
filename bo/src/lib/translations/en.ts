@@ -67,6 +67,16 @@ export default {
     "error": "Unable to load or save profile.",
     "session": "Session expired. Sign in again.",
     "back": "Dashboard",
-    "readonly": "Changing email and password requires a dedicated security flow."
+    "readonly": "Changing email and password requires a dedicated security flow.",
+    "passwordTitle": "Change my password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordSave": "Change my password",
+    "passwordInvalid": "Check your current password and enter a different new password.",
+    "passwordMismatch": "The two new passwords do not match.",
+    "passwordLength": "At least 12 characters.",
+    "passwordSuccess": "Password changed. Sign in again.",
+    "singleLanguage": "Only one language is available for this project."
   }
 } as const;

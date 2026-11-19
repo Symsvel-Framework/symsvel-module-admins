@@ -67,6 +67,16 @@ export default {
     "error": "Impossible de charger ou d’enregistrer le profil.",
     "session": "Session expirée. Reconnectez-vous.",
     "back": "Tableau de bord",
-    "readonly": "La modification de l’adresse e-mail et du mot de passe nécessite un parcours de sécurité dédié."
+    "readonly": "La modification de l’adresse e-mail et du mot de passe nécessite un parcours de sécurité dédié.",
+    "passwordTitle": "Changer mon mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "passwordSave": "Modifier mon mot de passe",
+    "passwordInvalid": "Vérifiez le mot de passe actuel et saisissez un nouveau mot de passe différent.",
+    "passwordMismatch": "Les deux nouveaux mots de passe ne correspondent pas.",
+    "passwordLength": "12 caractères minimum.",
+    "passwordSuccess": "Mot de passe modifié. Reconnexion nécessaire.",
+    "singleLanguage": "Une seule langue est disponible pour ce projet."
   }
 } as const;
