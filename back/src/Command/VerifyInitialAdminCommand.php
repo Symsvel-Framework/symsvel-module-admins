@@ -36,7 +36,9 @@ final class VerifyInitialAdminCommand extends Command
                 throw new \RuntimeException('Exactly one initial administrator is required.');
             }
             $admin = $this->admins->findOneBy([]);
-            if ($admin === null || $admin->getRoleCode() !== 'ROLE_DEV') {
+            if ($admin === null || $admin->getRoleCode() !== 'ROLE_DEV'
+                || !$admin->isEnabled() || $admin->isInvitationPending()
+                || $admin->getEmailVerifiedAt() === null) {
                 throw new \RuntimeException('Developer administrator not found.');
             }
             $output->writeln('<info>Initial administrator verified.</info>');

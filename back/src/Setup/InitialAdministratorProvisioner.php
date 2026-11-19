@@ -42,7 +42,8 @@ final class InitialAdministratorProvisioner
     /** Only called after a guarded local Setup has verified the existing credentials. */
     public function trustExistingBootstrap(Admin $admin, ?string $language = null): void
     {
-        if ($admin->getRoleCode() !== 'ROLE_DEV' || $this->admins->count([]) !== 1) {
+        if ($admin->getRoleCode() !== 'ROLE_DEV' || !$admin->isEnabled()
+            || $admin->isInvitationPending() || $this->admins->count([]) !== 1) {
             throw new \RuntimeException('Cannot trust a non-initial administrator.');
         }
         $changed = $admin->getEmailVerifiedAt() === null;

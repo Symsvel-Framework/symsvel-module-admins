@@ -334,3 +334,20 @@ désactivé, une invitation en attente ou une adresse non vérifiée ne le
 peuvent pas. Aucun contrôle de sécurité ni endpoint de production n'est
 assoupli. La CI doit confirmer la correction, et le CT XT reste requis
 sur les quatre SGBD avec le compte développeur initial.
+
+### Garde de reprise du premier administrateur (19/11/2026)
+
+La commande `symsvel:admins:bootstrap:verify` n'accepte que **l'unique**
+compte initial `ROLE_DEV` actif, hors invitation en attente, dont
+l'adresse a été approuvée par le Setup local. Le compte DEV ne devient
+pas « protégé contre toute modification » : ses changements personnels
+de mot de passe, langue ou e-mail restent autorisés. Seuls les états
+incohérents doivent bloquer la finalisation.
+
+Le parcours de reprise `symsvel:admins:bootstrap:stdin` et
+`InitialAdministratorProvisioner::trustExistingBootstrap()` refusent
+également de réutiliser un compte DEV désactivé ou en attente, même
+lorsque son mot de passe est connu. Ce garde contrôle un état Setup,
+non une permission de gestion des comptes. Les vérifications s'appuient
+sur les champs persistés réels et des tests SQLite ; la CI puis les
+crash-tests XT du Setup restent nécessaires.

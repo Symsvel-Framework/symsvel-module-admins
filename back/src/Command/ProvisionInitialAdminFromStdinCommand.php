@@ -42,7 +42,9 @@ final class ProvisionInitialAdminFromStdinCommand extends Command
             $password = $data['password'];
             $existing = $this->admins->findOneBy(['email' => $email]);
             if ($existing !== null) {
-                if ($existing->getRoleCode() !== 'ROLE_DEV' || !password_verify($password, $existing->getPasswordHash())) {
+                if ($existing->getRoleCode() !== 'ROLE_DEV' || !$existing->isEnabled()
+                    || $existing->isInvitationPending()
+                    || !password_verify($password, $existing->getPasswordHash())) {
                     throw new \RuntimeException('Administrator already exists with different credentials.');
                 }
                 $this->provisioner->trustExistingBootstrap($existing, $data['language']);
