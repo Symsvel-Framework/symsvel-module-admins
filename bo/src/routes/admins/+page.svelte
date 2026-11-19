@@ -376,7 +376,7 @@
       {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
       <div class="modal-actions">
         <Button type="button" variant="secondary" onclick={() => showInvite = false}>{t.cancel}</Button>
-        <Button type="submit" disabled={busy || rolesLoading || activeLanguages.length === 0 || !roleIsSelectable(role, availableRoles)}>{busy ? t.sending : t.send}</Button>
+        <Button type="submit" disabled={busy || rolesLoading || activeLanguages.length === 0 || (activeLanguages.length > 1 && !accountLanguage) || !roleIsSelectable(role, availableRoles)}>{busy ? t.sending : t.send}</Button>
       </div>
     </form>
   </Modal>
@@ -406,7 +406,7 @@
           disabled={busy} />
         <div class="modal-actions">
           <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
-          <Button type="submit" disabled={busy || activeLanguages.length === 0}>{t.save}</Button>
+          <Button type="submit" disabled={busy || activeLanguages.length === 0 || (activeLanguages.length > 1 && !editLanguage) || !newRole}>{t.save}</Button>
         </div>
       </form>
     {/if}
