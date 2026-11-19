@@ -27,3 +27,9 @@ Les écrans réutilisent maintenant `Button` (primaire et secondaire) et
 Les modules fournissent les libellés, états, callbacks et appels `boApi`.
 Aucune logique d'ACL n'est déplacée vers les composants.
 Voir `symsvel-bo/docs/bo-ui.md`.
+
+### Uniformisation Design System BO (19/11/2026)
+
+Les tableaux Administrateurs et Invitations conservent leurs composants `DataTable`/`Pagination`, leurs modales natives et leurs ACL. Les cinq sélections des formulaires (rôle d'invitation, rôle édité, langues d'interface et état actif) utilisent désormais le **Dropdown commun BO**, avec options fournies par les API et drapeaux par le helper natif `languageFlag`. Les booléens conservent leur type via `value === '1'`, et un rôle existant non attribuable reste lisible avant modification, sans contourner les contrôles serveur.
+
+Les surfaces, onglets, formulaires, bordures, textes secondaires et focus utilisent les variables CSS `--bo-*` du thème clair/sombre. La soumission continue à appeler l'API asynchrone et à préserver la page courante, sans rechargement complet. Les langues et rôles ne sont pas devinés depuis le navigateur ; les données sont celles du backend. CI et CT XT requis.

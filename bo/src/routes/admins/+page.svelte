@@ -5,6 +5,8 @@
   import Button from '../../../../components/Button.svelte';
   import Alert from '../../../../components/Alert.svelte';
   import Modal from '../../../../components/Modal.svelte';
+  import Dropdown from '../../../../components/Dropdown.svelte';
+  import { languageFlag } from '../../../../components/dropdown';
   import DataTable from '../../../../components/DataTable.svelte';
   import type { DataAction, DataColumn, SortOrder } from '../../../../components/data-table';
   import type { PageSize } from '../../../../components/pagination';
@@ -38,6 +40,12 @@
   let invitations = $state<PendingInvitation[]>([]);
   let accounts = $state<BoAdminAccount[]>([]);
   let availableRoles = $state<AssignableRole[]>([]);
+  const roleOptions = $derived(availableRoles.map((item) => ({
+    value: item.code, label: item.label, code: item.code
+  })));
+  const languageOptions = $derived(activeLanguages.map((item) => ({
+    value: item.iso_code, label: item.name, code: item.iso_code.toUpperCase(), icon: languageFlag(item.iso_code)
+  })));
   let rolesLoading = $state(false);
   let rolesError = $state('');
   let currentId = $state<number | null>(null);
@@ -351,26 +359,19 @@
     <form class="modal-form" onsubmit={invite}>
       <label for="new-admin-email">{t.email}</label>
       <input id="new-admin-email" type="email" bind:value={email} autocomplete="email" maxlength="254" required />
-      <label for="new-admin-role">{t.role}</label>
-      <select id="new-admin-role" bind:value={role} aria-describedby="role-help"
-        disabled={rolesLoading || availableRoles.length === 0} required>
-        <option value="" disabled>{t.chooseRole}</option>
-        {#each availableRoles as item (item.code)}
-          <option value={item.code}>{item.label} ({item.code})</option>
-        {/each}
-      </select>
+      <span class="field-label">{t.role}</span>
+      <Dropdown value={role} options={roleOptions} label={t.role}
+        placeholder={t.chooseRole} onChange={(value) => { role = value; }}
+        disabled={rolesLoading || availableRoles.length === 0 || busy} />
       <small id="role-help">{t.roleHint}</small>
       {#if rolesError}<Alert kind="error">{rolesError}</Alert>{/if}
       {#if !rolesLoading && !rolesError && availableRoles.length === 0}
         <Alert kind="info">{t.noRoles}</Alert>
       {/if}
       {#if activeLanguages.length > 1}
-        <label for="new-admin-language">{t.accountLanguage}</label>
-        <select id="new-admin-language" bind:value={accountLanguage} required>
-          {#each activeLanguages as item (item.iso_code)}
-            <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
-          {/each}
-        </select>
+        <span class="field-label">{t.accountLanguage}</span>
+        <Dropdown value={accountLanguage} options={languageOptions} label={t.accountLanguage}
+          onChange={(value) => { accountLanguage = value; }} disabled={busy} />
       {/if}
       {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
       <div class="modal-actions">
@@ -385,29 +386,24 @@
       <p>{editing.email}</p>
       {#if error}<Alert kind="error">{error}</Alert>{/if}
       <form class="modal-form" onsubmit={(event) => { event.preventDefault(); void updateAccount(); }}>
-        <label for="edit-admin-role">{t.role}</label>
-        <select id="edit-admin-role" bind:value={newRole} disabled={rolesLoading} required>
-          {#if !roleIsSelectable(newRole, availableRoles)}
-            <option value={newRole}>{newRole}</option>
-          {/if}
-          {#each availableRoles as item (item.code)}
-            <option value={item.code}>{item.label} ({item.code})</option>
-          {/each}
-        </select>
+        <span class="field-label">{t.role}</span>
+        <Dropdown value={newRole}
+          options={roleIsSelectable(newRole, availableRoles) ? roleOptions : [
+            { value: newRole, label: newRole },
+            ...roleOptions
+          ]} label={t.role} onChange={(value) => { newRole = value; }}
+          disabled={rolesLoading || busy} />
         {#if activeLanguages.length > 1}
-          <label for="edit-admin-language">{t.accountLanguage}</label>
-          <select id="edit-admin-language" bind:value={editLanguage} required>
-            {#each activeLanguages as item (item.iso_code)}
-              <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
-            {/each}
-          </select>
+          <span class="field-label">{t.accountLanguage}</span>
+          <Dropdown value={editLanguage} options={languageOptions} label={t.accountLanguage}
+            onChange={(value) => { editLanguage = value; }} disabled={busy} />
         {/if}
         {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
-        <label for="edit-admin-enabled">{t.state}</label>
-        <select id="edit-admin-enabled" bind:value={newEnabled}>
-          <option value={true}>{t.active}</option>
-          <option value={false}>{t.disabled}</option>
-        </select>
+        <span class="field-label">{t.state}</span>
+        <Dropdown value={newEnabled ? '1' : '0'}
+          options={[{ value: '1', label: t.active }, { value: '0', label: t.disabled }]}
+          label={t.state} onChange={(value) => { newEnabled = value === '1'; }}
+          disabled={busy} />
         <div class="modal-actions">
           <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
           <Button type="submit" disabled={busy || activeLanguages.length === 0}>{t.save}</Button>
@@ -421,17 +417,19 @@
   .admins-page { max-width: 1200px; margin: auto; display: grid; gap: 20px; }
   .page-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
   .page-heading h1 { margin: 0; }
-  .page-heading p { color: #667085; }
-  .panel { background: white; padding: 24px; border: 1px solid #e2e7ee; border-radius: 14px; min-width: 0; }
+  .page-heading p { color: var(--bo-muted); }
+  .panel { background: var(--bo-surface); color: var(--bo-text); padding: 24px; border: 1px solid var(--bo-border); border-radius: 14px; min-width: 0; }
   .section-heading { margin-bottom: 20px; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #e2e7ee; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--bo-border); }
   .tabs button { padding: 12px; border: 0; border-bottom: 3px solid transparent;
-    background: transparent; font: inherit; cursor: pointer; color: #667085; }
-  .tabs button[aria-selected="true"] { border-bottom-color: #2457d6; color: #18202b; font-weight: 700; }
-  .tabs button:focus-visible { outline: 2px solid #2457d6; outline-offset: -2px; }
+    background: transparent; font: inherit; cursor: pointer; color: var(--bo-muted); }
+  .tabs button[aria-selected="true"] { border-bottom-color: var(--bo-primary); color: var(--bo-text); font-weight: 700; }
+  .tabs button:focus-visible { outline: 2px solid var(--bo-primary); outline-offset: -2px; }
   .modal-form { display: grid; gap: 10px; margin-top: 15px; }
-  .modal-form label { font-weight: 650; }
-  .modal-form input, .modal-form select { width: 100%; padding: 11px; border: 1px solid #ccd4df; border-radius: 8px; font: inherit; }
-  .modal-form small { color: #667085; }
+  .modal-form label, .field-label { font-weight: 650; }
+  .field-label { display: block; }
+  .modal-form input { width: 100%; min-width: 0; padding: 11px; border: 1px solid var(--bo-border); border-radius: 8px; font: inherit; background: var(--bo-input); color: var(--bo-text); }
+  .modal-form input:focus-visible { outline: 2px solid var(--bo-focus); outline-offset: 2px; }
+  .modal-form small { color: var(--bo-muted); }
   .modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 </style>
