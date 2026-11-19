@@ -320,3 +320,17 @@ Les libellés du module Admins sont déclarés dans `bo/src/lib/translations/fr.
 Le libellé d'identité du menu BO, même affiché par le shell natif, est déclaré dans Admins (`bo.admins.account.administrator`). Tooling le publie depuis les dictionnaires BO d'Admins, le shell le résout à la compilation, et Languages le répertorie sous le module propriétaire.
 
 Les assertions de dictionnaires vérifient explicitement les libellés du shell attribués à ce module, en plus de l'alignement des clés FR/EN. Le shell reste un consommateur des traductions et conserve ses fallbacks natifs.
+
+### Fixture DBAL du changement d'adresse personnel (19/11/2026)
+
+`AdminProfileEmailOwnerTest` insère désormais les colonnes `enabled` et
+`invitation_pending` avec `ParameterType::BOOLEAN`, comme les conditions
+SQL du propriétaire BO. Un `false` inséré sans type explicite via PDO
+SQLite peut être enregistré comme chaîne vide, qui ne correspond pas à
+`BOOLEAN 0` dans le `WHERE` : le test signalait alors un faux refus.
+La fixture identifie explicitement le propriétaire comme `ROLE_DEV` et
+vérifie qu'il peut confirmer sa nouvelle adresse, mais qu'un compte
+désactivé, une invitation en attente ou une adresse non vérifiée ne le
+peuvent pas. Aucun contrôle de sécurité ni endpoint de production n'est
+assoupli. La CI doit confirmer la correction, et le CT XT reste requis
+sur les quatre SGBD avec le compte développeur initial.
