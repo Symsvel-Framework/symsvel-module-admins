@@ -195,3 +195,22 @@ Supprimer est rouge ; confirmer une invitation ou une édition est vert. Les pro
 Les couleurs sont fournies par les variantes centralisées du Design System BO,
 sans CSS spécifique au module. Les états désactivés restent neutres et lisibles.
 Tests CI et CT XT clair/sombre requis.
+
+## Documentation embarquée dans le BO (19/11/2026)
+
+L'accès « Documentation » du menu administrateur ouvre la route BO
+`/documentation`. Cette interface consulte, au moyen de la session BO
+existante, la liste des pages disponibles et affiche le Markdown d'une
+page sélectionnée. Les guides d'administration et d'utilisation sont
+visibles aux comptes BO actifs ; les documents de développement sont
+réservés au seul `ROLE_DEV`. Une page inconnue renvoie un refus sans
+révéler les sources non autorisées. Aucun document privé n'est embarqué
+dans les fichiers statiques livrés au navigateur avant authentification.
+
+La documentation est un artefact assemblé uniquement sur commande :
+exécuter `symsvel documentation:sync` pour actualiser les sources après
+une installation, mise à jour ou suppression de modules. Sans assemblage,
+le BO affiche une indication neutre plutôt qu'un lien cassé. Le build
+du site MkDocs n'est pas installé et ne fait pas partie du Setup.
+L'accès et le rendu sur XT doivent être validés avec les profils
+`ROLE_DEV` et administrateur ordinaire avant clôture.

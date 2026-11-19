@@ -351,3 +351,36 @@ lorsque son mot de passe est connu. Ce garde contrôle un état Setup,
 non une permission de gestion des comptes. Les vérifications s'appuient
 sur les champs persistés réels et des tests SQLite ; la CI puis les
 crash-tests XT du Setup restent nécessaires.
+
+## Documentation BO authentifiée (19/11/2026)
+
+Le module natif Admins expose les documents privés assemblés manuellement
+par Tooling depuis `backend/var/symsvel/documentation.json`. Il s'agit
+d'un fichier hors `public/`, jamais importé directement dans les assets
+statiques Svelte. Le catalogue `DocumentationCatalog` relit l'index
+avec checksum et refuse une altération, un lien symbolique ou des
+métadonnées invalides. Les pages sont du texte Markdown, non de l'HTML
+exécuté dans un navigateur.
+
+Deux endpoints de lecture seuls appartiennent à Admins :
+- `GET /apibo/admins/documentation` liste les pages disponibles ;
+- `GET /apibo/admins/documentation/page?id=...` renvoie une page Markdown.
+
+Les deux parcours exigent un jeton Auth Bearer du **contexte BO**, un
+compte existant, activé et hors invitation. Un administrateur ordinaire
+accède aux guides `admin` et `user` ; **seul ROLE_DEV** peut également
+lire les documents `dev` (architecture, tooling et documentation interne).
+Les identifiants demandés par HTTP sont cherchés uniquement dans les
+pages validées de l'index : aucun chemin du navigateur ne devient un
+chemin de fichier. Un identifiant inconnu ou une page de développeur
+non autorisée renvoie `404` ; session invalide `401`, index corrompu
+`503`, requête invalide `400`. Toutes les réponses sont `no-store`.
+
+La commande utilisateur `symsvel documentation:sync` doit être lancée
+volontairement par un mainteneur après installation ou mise à jour des
+modules. **Aucun build documentaire** ni installation MkDocs/Python
+n'intervient pendant Setup, et aucun rôle de maintenance n'est porté
+par Core ou Back. Les tests vérifient l'authentification, la séparation
+des scopes, l'absence de fuite de pages non autorisées, l'invalidation
+d'un compte et l'intégrité du document. Les CT BO et la publication
+réelle du fichier avec Tooling restent nécessaires.
