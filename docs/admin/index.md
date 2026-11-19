@@ -83,3 +83,14 @@ Les routes déclarées par attributs Symfony sont vérifiées via
 `Symfony\\Component\\Routing\\Route` et n'exposent donc pas les getters
 des objets du routeur. Correction du test sans changement du contrat
 HTTP ni relâchement des contrôles d'identité.
+
+### Choix de langue sur le profil personnel (19/11/2026)
+
+Un administrateur authentifié peut modifier **sa propre** langue même
+s'il ne possède pas les permissions de gérer les utilisateurs ou Languages.
+Le formulaire lit donc les langues actives depuis le catalogue public
+`GET /apiopen/languages/account-options`, déjà utilisé côté App, et non
+depuis `/apibo/languages/account-options` qui est soumis aux ACL de
+création/édition des comptes. L'écriture demeure protégée par le token BO
+sur `PATCH /apibo/admins/profile`. Ce découplage évite l'escalade des
+ACL pour une simple préférence personnelle.

@@ -6,7 +6,7 @@
   import Button from '../../../../components/Button.svelte';
   import Dropdown from '../../../../components/Dropdown.svelte';
   import { languageFlag } from '../../../../components/dropdown';
-  import { ApiError } from '../../../../api/client';
+  import { api, ApiError } from '../../../../api/client';
   import { boApi } from '../../../../api/session';
   import { uiLanguage } from '../../../../api/locales';
   import {
@@ -40,7 +40,7 @@
     try {
       const [account, choices] = await Promise.all([
         boApi<AdminSelfProfileResponse>('/apibo/admins/profile'),
-        boApi<{ data: ProfileLanguage[] }>('/apibo/languages/account-options')
+        api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true })
       ]);
       profile = account.data;
       languages = Array.isArray(choices.data) ? choices.data : [];

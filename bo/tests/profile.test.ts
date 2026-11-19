@@ -7,3 +7,12 @@ describe('Admins self profile copy', () => {
     expect(adminProfileCopy('en').title).toBe('My profile');
   });
 });
+
+import { readFileSync } from 'node:fs';
+
+it('does not require account-management ACLs to list personal language preferences', () => {
+  const source = readFileSync(new URL('../src/routes/profile/+page.svelte', import.meta.url), 'utf8');
+  expect(source).toContain("'/apiopen/languages/account-options'");
+  expect(source).toContain('public: true');
+  expect(source).not.toContain("'/apibo/languages/account-options'");
+});
