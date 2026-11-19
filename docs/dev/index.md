@@ -394,3 +394,5 @@ La vérification de l'écran assemblé applique le lint Svelte strict : les bouc
 ### Visibilité des notices PHPUnit avant stabilisation (19/11/2026)
 
 Le script Composer de tests affiche dorénavant les notices et les dépréciations propres à PHPUnit, en plus des tests ignorés. Cette modification ne supprime pas les signalements et n'affecte aucune logique du module. Elle permet de qualifier les alertes observées dans la CI Admins et d'identifier leurs corrections avant les CT multi-SGBD.
+
+Les fixtures Doctrine qui configurent `ManagerRegistry::getManagerForClass()` déclarent maintenant explicitement `expects(atLeastOnce())` avant les contraintes d'arguments `with(...)`. Cette migration suit PHPUnit 13 et évite le comportement déprécié qui deviendra invalide en PHPUnit 14. L'affichage des notices propres à PHPUnit est également activé pour qualifier les sept signalements restants, sans désactiver les avertissements.

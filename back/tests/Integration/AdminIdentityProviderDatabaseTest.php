@@ -36,7 +36,7 @@ final class AdminIdentityProviderDatabaseTest extends TestCase
             (new SchemaTool($entityManager))->createSchema([$entityManager->getClassMetadata(Admin::class)]);
 
             $registry = $this->createMock(ManagerRegistry::class);
-            $registry->method('getManagerForClass')->with(Admin::class)->willReturn($entityManager);
+            $registry->expects(self::atLeastOnce())->method('getManagerForClass')->with(Admin::class)->willReturn($entityManager);
             $registry->method('getManager')->willReturn($entityManager);
             $provider = new AdminIdentityProvider(new AdminRepository($registry));
 

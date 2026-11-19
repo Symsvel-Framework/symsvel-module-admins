@@ -67,7 +67,7 @@ final class AdminDocumentationHttpTest extends TestCase
             $em->clear();
 
             $registry = $this->createMock(ManagerRegistry::class);
-            $registry->method('getManagerForClass')->with(Admin::class)->willReturn($em);
+            $registry->expects(self::atLeastOnce())->method('getManagerForClass')->with(Admin::class)->willReturn($em);
             $registry->method('getManager')->willReturn($em);
             $admins = new AdminRepository($registry);
             $now = new \DateTimeImmutable();

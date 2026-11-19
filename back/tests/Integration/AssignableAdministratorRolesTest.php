@@ -46,7 +46,7 @@ final class AssignableAdministratorRolesTest extends TestCase
             'role_code' => 'ROLE_ADMIN', 'allowed' => true,
         ]);
         $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManagerForClass')->with(Role::class)->willReturn($em);
+        $registry->expects(self::atLeastOnce())->method('getManagerForClass')->with(Role::class)->willReturn($em);
         $repo = new RoleRepository($registry);
 
         $gate = new class implements BoAccessGate {

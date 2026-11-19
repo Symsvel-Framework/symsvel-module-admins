@@ -37,7 +37,7 @@ final class InitialAdministratorStateGuardTest extends TestCase
         try {
             (new SchemaTool($em))->createSchema([$em->getClassMetadata(Admin::class)]);
             $registry = $this->createMock(ManagerRegistry::class);
-            $registry->method('getManagerForClass')->with(Admin::class)->willReturn($em);
+            $registry->expects(self::atLeastOnce())->method('getManagerForClass')->with(Admin::class)->willReturn($em);
             $registry->method('getManager')->willReturn($em);
             $admins = new AdminRepository($registry);
             $provisioner = new InitialAdministratorProvisioner($em, $admins);

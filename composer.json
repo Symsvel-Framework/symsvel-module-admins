@@ -30,7 +30,7 @@
         "phpunit/phpunit": "^13.4"
     },
     "scripts": {
-        "test": "phpunit -c back/phpunit.xml.dist --display-skipped --display-notices --display-phpunit-deprecations",
+        "test": "phpunit -c back/phpunit.xml.dist --display-skipped --display-notices --display-phpunit-deprecations --display-phpunit-notices",
         "qa": [
             "@test"
         ]
