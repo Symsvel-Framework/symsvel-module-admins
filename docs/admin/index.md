@@ -214,3 +214,5 @@ le BO affiche une indication neutre plutôt qu'un lien cassé. Le build
 du site MkDocs n'est pas installé et ne fait pas partie du Setup.
 L'accès et le rendu sur XT doivent être validés avec les profils
 `ROLE_DEV` et administrateur ordinaire avant clôture.
+
+L'écran Markdown applique un rendu volontairement limité aux titres, paragraphes, listes et blocs de code. Les enrichissements Markdown complexes et les liens internes relatifs restent affichés en texte ; ils ne sont pas interprétés comme des commandes ni insérés en HTML. La documentation de développement n'est pas disponible pour un rôle ordinaire, même si l'utilisateur forge un identifiant de page dans l'URL.

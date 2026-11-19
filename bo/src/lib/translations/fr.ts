@@ -51,6 +51,21 @@ export default {
   "account": {
     "administrator": "Administrateur"
   },
+  "documentation": {
+    "title": "Documentation",
+    "intro": "Guides et références des modules installés.",
+    "refresh": "Actualiser",
+    "loading": "Chargement de la documentation…",
+    "pageLoading": "Chargement du document…",
+    "empty": "Aucun document disponible.",
+    "unpublished": "Documentation non assemblée. Un mainteneur doit exécuter symsvel documentation:sync.",
+    "failed": "Impossible de consulter la documentation.",
+    "expired": "Session expirée. Reconnectez-vous.",
+    "admin": "Administration",
+    "user": "Utilisation",
+    "dev": "Développement",
+    "select": "Sélectionner un document"
+  },
   "profile": {
     "title": "Mon profil",
     "intro": "Gérer les préférences de mon compte administrateur.",

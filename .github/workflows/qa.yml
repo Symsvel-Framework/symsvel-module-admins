@@ -60,6 +60,14 @@ jobs:
           mkdir -p assembled-bo/src/routes/admins
           cp bo/src/lib/modules/admins/*.ts assembled-bo/src/lib/modules/admins/
           cp bo/src/routes/admins/+page.svelte assembled-bo/src/lib/modules/admins/routes/admins/+page.svelte
+          mkdir -p assembled-bo/src/lib/translations/admins assembled-bo/tests
+          cp bo/src/lib/translations/*.ts assembled-bo/src/lib/translations/admins/
+          for route in profile verify-email-change documentation; do
+            mkdir -p "assembled-bo/src/lib/modules/admins/routes/$route" "assembled-bo/src/routes/$route"
+            cp "bo/src/routes/$route/+page.svelte" "assembled-bo/src/lib/modules/admins/routes/$route/+page.svelte"
+            printf '<script lang="ts">\n  import ModulePage from "#lib/modules/admins/routes/%s/+page.svelte";\n</script>\n<ModulePage />\n' "$route" > "assembled-bo/src/routes/$route/+page.svelte"
+          done
+          cp bo/tests/documentation.test.ts assembled-bo/tests/admins-documentation.test.ts
           cat > assembled-bo/src/routes/admins/+page.svelte <<'ROUTE'
           <script lang="ts">
             import ModulePage from '#lib/modules/admins/routes/admins/+page.svelte';

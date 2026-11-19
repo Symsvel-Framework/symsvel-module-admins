@@ -8,5 +8,8 @@ describe('Admins dictionaries', () => {
     expect(fr.account.administrator).toBe('Administrateur');
     expect(en.account.administrator).toBe('Administrator');
     expect(fr.heading).toBe('Inviter un administrateur');
+    expect(fr.documentation.title).toBe('Documentation');
+    expect(en.documentation.dev).toBe('Development');
+    expect(Object.keys(fr.documentation).sort()).toEqual(Object.keys(en.documentation).sort());
   });
 });

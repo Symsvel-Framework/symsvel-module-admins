@@ -384,3 +384,7 @@ par Core ou Back. Les tests vérifient l'authentification, la séparation
 des scopes, l'absence de fuite de pages non autorisées, l'invalidation
 d'un compte et l'intégrité du document. Les CT BO et la publication
 réelle du fichier avec Tooling restent nécessaires.
+
+### Écran documentaire Svelte BO (19/11/2026)
+
+La route BO `/documentation` est apportée par Admins ; Tooling en synchronise la source sous `src/lib/modules/admins/routes/`, tandis que le BO hôte ne fournit que le lien du menu administrateur. Les libellés de l'écran sont exposés par les dictionnaires du module (`bo.admins.documentation.*`). Le client `boApi()` récupère l'index autorisé puis une page à la fois, sans copie de Markdown dans les bundles statiques. L'affichage utilise un parseur de blocs minimal (titres, paragraphes, listes, citations, code) et le texte échappé de Svelte, sans `{@html}` ni interpolation de HTML. Les seuls liens actifs sont externes en HTTP(S), ouverts avec `noopener noreferrer`. La CI BO assemblée vérifie maintenant également ce parcours, et l'affichage réel et les permissions demeurent à valider sur XT.
