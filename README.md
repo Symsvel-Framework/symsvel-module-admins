@@ -16,3 +16,7 @@ The older `symsvel:admins:bootstrap` command remains available for the historica
 ## Migrations natives (chantier DBAL)
 
 Les sources immuables utilisent désormais des noms `Migration/VersionYYYYMMDDHHMMSS.php`. Le compilateur du Tooling conserve leur version Doctrine et convertit les opérations `Schema` en SQL selon la plateforme DBAL active. Cette branche est à valider avec le Tooling associé : tests automatisés et crash-tests PostgreSQL/MySQL avant merge. Ne pas utiliser avec l'ancien compilateur.
+
+## Distribution stable v1.0.0 (20/11/2026)
+
+Le manifeste Composer du tag stable déclare exclusivement des contraintes `^1.0` pour ses dépendances SymSvel : `symsvel-framework/module-auth`, `symsvel-framework/module-mails`, `symsvel-framework/module-settings`, `symsvel-framework/module-roles`, `symsvel-framework/module-acls`, `symsvel-framework/module-languages`. Les références `dev-dev` restent réservées à la branche `dev` et à l'installation de maintenance avec `--dev`. Le tag `v1.0.0` n'est à publier **qu'après** le tag stable de chaque dépendance, son indexation dans Satis et la réussite des contrôles CI ; aucune release n'est produite par ce commit.
