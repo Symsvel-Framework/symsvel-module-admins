@@ -19,6 +19,30 @@ final class AdminTest extends TestCase
         self::assertNull($admin->getId());
     }
 
+    public function testInvitedAdministratorCannotBecomeDeveloperAndHasUnusableInitialPassword(): void
+    {
+        $invite = Admin::invited(' invited@example.test ', 'ROLE_ADMIN');
+        self::assertSame('invited@example.test', $invite->getEmail());
+        self::assertSame('ROLE_ADMIN', $invite->getRoleCode());
+        self::assertTrue($invite->isInvitationPending());
+        self::assertNull($invite->getEmailVerifiedAt());
+        self::assertSame('argon2id', password_get_info($invite->getPasswordHash())['algoName']);
+        $this->expectException(\LogicException::class);
+        $invite->trustEmailFromLocalSetup();
+    }
+
+    public function testInvitationCannotCreateDeveloper(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Admin::invited('developer2@example.test', 'ROLE_DEV');
+    }
+
+    public function testInvitationCannotCreateAppUser(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Admin::invited('app@example.test', 'ROLE_USER');
+    }
+
     public function testRejectsPlaintextPassword(): void
     {
         $this->expectException(\InvalidArgumentException::class);

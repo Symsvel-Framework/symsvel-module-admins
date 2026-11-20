@@ -21,3 +21,382 @@ La source `Migration/001_admins.php` définit désormais la structure de table a
 Les opérations de création/suppression de table sont uniquement déclaratives ; elles ne produisent pas encore de SQL via le compilateur actuel.
 
 À vérifier sur un **XT réinitialisé**, sans aucune réparation locale : compilation, exécution, tables réellement présentes, index, rôles système, état du Setup et diagnostic/rollback en cas d'échec. Toute correction devra se faire dans le framework et être documentée avec tests et CI.
+
+### Visibilité des tests ignorés
+
+La CI affiche les raisons des tests PHPUnit ignorés avec `--display-skipped` (directement ou via le script Composer QA). Un test ignoré ne devient pas bloquant pour autant : les motifs sont examinés pour distinguer prérequis absents et couverture manquante.
+
+## PHPUnit : découverte des tests (14/11/2026)
+
+La configuration `back/phpunit.xml.dist` utilise un unique testsuite pointant vers `back/tests` pour découvrir récursivement les tests Unit, Integration et Functional. Le bootstrap reste `../vendor/autoload.php`, chemin relatif au fichier XML situé dans `back/`. La commande Composer `composer test` continue d'utiliser `phpunit -c back/phpunit.xml.dist`. Cette correction simplifie la découverte et permet l'ajout de futurs tests sans modifier la liste des sous-dossiers ; elle ne constitue pas à elle seule une validation des tests. Vérifier l'exécution réelle en CI.
+
+## Adaptateur d'identité BO vers Auth (14/11/2026)
+
+`Auth/AdminIdentityProvider` implémente les deux contrats `PasswordPrincipal` et `PrincipalStatus` du module Auth. Il s'appuie exclusivement sur `AdminRepository` et l'entité `Admin` : recherche par email, vérification du hash Argon2id via `password_verify`, contrôle de `enabled` et de l'identifiant persistant. Seul le contexte `bo` est accepté ; une demande `app` est rejetée avant tout accès au repository. `isActive` recharge l'administrateur à chaque contrôle, pour que la désactivation soit immédiatement effective.
+
+Le module déclare la dépendance Composer `symsvel-framework/module-auth` et enregistre le fournisseur comme service autowiré. **Il n'installe pas d'alias global** `PasswordPrincipal` ou `PrincipalStatus` : la composition BO/App doit sélectionner les fournisseurs sans que l'adaptateur BO intercepte les identités App. Aucun endpoint ni firewall n'est ouvert. Les tests unitaires couvrent les contrats et le refus précoce ; des tests d'intégration ORM avec administrateurs persistés et les crash-tests locaux restent nécessaires. La CI de cette passe n'est pas encore validée.
+
+### Résolution Composer d'Auth en développement (14/11/2026)
+
+La CI Admins échouait avant les tests : son `composer.json` exigeait `symsvel-framework/module-auth:^1.0` sans déclarer de dépôt privé, alors que la seule release Auth constatée sur GitHub est `0.1.0` et que les contrats récents sont développés sur la branche `dev`. Le manifeste Composer Admins déclare désormais le dépôt Satis privé `https://packages.xavier-tezza.fr` et exige explicitement `dev-dev`, sans abaisser globalement `minimum-stability`. **Précondition :** Satis doit indexer la branche `dev` du module Auth et le runner doit disposer de ses droits d'accès habituels. Cette configuration vise les tests sur la branche de développement ; avant stabilisation, remplacer la contrainte par une release publiée correspondant réellement aux contrats. La CI et les tests restent à confirmer après ce correctif.
+
+### Normalisation des identifiants de connexion (14/11/2026)
+
+Le fournisseur BO supprime les espaces périphériques de l'email **avant** validation, comme le constructeur de l'entité `Admin`, et refuse les emails dépassant 254 octets. Le test unitaire couvre ce rejet sans accès à Doctrine. Le contrôle des identifiants persistés et du mot de passe nécessite toujours un test d'intégration ORM ; la CI de ce correctif reste à confirmer.
+
+### Test d'intégration ORM du fournisseur BO (14/11/2026)
+
+`back/tests/Integration/AdminIdentityProviderDatabaseTest.php` utilise une base SQLite **en mémoire**, un vrai `EntityManager`, le schéma Doctrine de l'entité `Admin` et le vrai `AdminRepository`. Il vérifie la connexion avec un compte persisté et son hash Argon2id, le refus d'un mauvais mot de passe, l'isolation du contexte App, la normalisation des espaces de l'email et le refus d'un compte supprimé après rechargement. Il ne modifie aucune base de projet. Le test est ignoré si `pdo_sqlite` est absent ; son exécution effective et la CI restent à confirmer. Il ne remplace pas les crash-tests multi-SGBD ni les tests de compte désactivé, faute d'API de désactivation dans l'entité actuelle.
+
+### Correctif Doctrine ORM / PHP 8.4 (14/11/2026)
+
+Le premier lancement du test d'intégration a échoué à la construction de l'EntityManager : Doctrine demandait Symfony LazyGhost (`symfony/var-exporter`) ou l'activation des lazy objects natifs. Puisque SymSvel exige PHP 8.4, la configuration ORM **du test** active désormais `enableNativeLazyObjects(true)`. Aucun package supplémentaire n'est ajouté à l'exécution du framework. Correctif en attente de confirmation CI.
+
+## Composition des identités par contexte (14/11/2026)
+
+`AdminIdentityProvider` déclare désormais `ContextOwnedIdentity::authContext()` = `bo` et est enregistré sous le tag `symsvel.auth.identity_provider`. Le routeur Auth choisit ce fournisseur uniquement pour le BO ; aucun alias de contrat global n'est installé par Admins. CI de cette passe à confirmer.
+
+### Récupération de mot de passe BO (en cours)
+
+`AdminPasswordResetIdentity` implémente le contrat `PasswordResetIdentity` du module Auth. Il recherche uniquement les administrateurs actifs par adresse email et met à jour leur empreinte Argon2id via la connexion DBAL partagée, afin de participer à la transaction globale de récupération. Le provider est enregistré sous `symsvel.auth.password_reset_identity`. Aucun endpoint de récupération n'est exposé à ce stade ; tests et CI de cette modification à confirmer.
+
+## Adresse de récupération et contrat Auth (15/11/2026)
+
+Le fournisseur `AdminPasswordResetIdentity` implémente désormais `PasswordResetIdentity::recoveryEmail(TokenSubject): ?string`. **Il renvoie intentionnellement `null` tant qu'aucun état persistant de vérification de boîte e-mail n'existe pour les comptes BO.** La présence de `email` et `enabled` ne prouve pas la propriété de la boîte. Aucun message de récupération n'est donc envoyé via cet adaptateur ; `PasswordResetDispatch` abandonne après contrôle anti-abus. Les contrats de recherche et de remplacement transactionnel de mot de passe restent inchangés.
+
+Ce comportement temporaire est volontairement fermé et testé dans `AdminPasswordResetIdentityRecoveryEmailTest`. Une évolution future devra définir et vérifier le processus de confirmation d'adresse auprès du propriétaire du compte, avec migration et tests correspondants, avant d'autoriser la délivrance des liens. Aucune route HTTP n'est ajoutée. CI et crash-tests locaux à confirmer.
+
+### Correctif CI : provenance du contrat Auth (15/11/2026)
+
+Le nouveau test du contrat `PasswordResetIdentity::recoveryEmail()` a échoué pendant le chargement de `AdminPasswordResetIdentity` : l'interface `SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity` était absente de la dépendance Composer installée. L'interface est présente sur la branche `dev` du dépôt Auth, mais pas sur `main` au moment de l'audit. La version exacte résolue par Satis dans les jobs rouges reste à confirmer.
+
+Pour le canal de développement, `composer.json` donne maintenant priorité au dépôt VCS Auth avant le catalogue Satis, tout en conservant `dev-dev`. La CI affiche `composer show symsvel-framework/module-auth` et vérifie explicitement l'existence de l'interface après `composer install`, avant `composer qa`. Aucun contrat métier, schéma ou service de production n'est modifié. Cette priorité VCS est limitée au travail sur `dev` : à la stabilisation, revenir à une release Auth publiée et indexée dans Satis. **CI à confirmer.**
+
+### Correctif Composer : stabilité des dépendances transitives Auth (15/11/2026)
+
+Après résolution d'Auth depuis sa branche `dev`, Composer a rejeté `symsvel-framework/module-mails:dev-dev` en dépendance transitive : la stabilité `dev` n'est pas autorisée implicitement par les dépendances indirectes lorsque le projet racine conserve son `minimum-stability` par défaut. Auth dépend de Mails et Settings, et Mails dépend lui-même de Settings.
+
+Le `composer.json` du module déclare désormais explicitement, à la racine, `module-auth`, `module-mails` et `module-settings` en `dev-dev` et pointe en priorité sur leurs dépôts Git `dev`, avant le catalogue Satis. Cela autorise uniquement ces dépendances de développement, sans abaisser globalement `minimum-stability`. Le workflow CI affiche les trois versions installées et vérifie toujours la présence de `PasswordResetIdentity`.
+
+**Portée temporaire du canal dev :** ces contraintes explicites sont à remplacer par des versions publiées cohérentes lorsque les trois modules seront stabilisés. Pas de modification du runtime ou du contrat métier. CI de cette correction à confirmer.
+
+## Vérification persistante des e-mails (15/11/2026)
+
+**Décision validée :** l'adresse doit avoir été confirmée avant qu'un lien de récupération du mot de passe puisse y être envoyé, y compris pour le premier administrateur créé pendant le Setup. Le propriétaire de la donnée reste le module Admins ; Auth reste responsable des jetons, Mails de l'envoi.
+
+La migration additive `Migration/Version20261115000001.php` ajoute `email_verified_at` (`datetime_immutable`, nullable) à la table du module. La migration initiale publiée n'est pas réécrite. L'entité `Admin` expose `getEmailVerifiedAt()` et initialise implicitement la nouvelle propriété à `null`. Les comptes existants, ainsi que les nouveaux comptes créés par le Setup ou les constructeurs, restent donc **non vérifiés** tant qu'aucun parcours de confirmation sécurisé n'a persisté une date. Aucun compte n'est vérifié automatiquement à la migration.
+
+`AdminPasswordResetIdentity::recoveryEmail()` consulte la connexion DBAL partagée et retourne l'adresse uniquement si le contexte vaut `bo`, le compte est actif (`enabled`) **et** `email_verified_at IS NOT NULL`. Sinon, il retourne `null` sans envoi. La recherche du sujet et le remplacement transactionnel du mot de passe ne changent pas.
+
+Tests : `EmailVerificationMigrationTest` vérifie les mutations `Schema` et leur annulation sans toucher aux colonnes préexistantes ; `AdminPasswordResetIdentityVerifiedMailboxTest` couvre le refus sans vérification, l'isolation du contexte, le passage à un état vérifié simulé en base puis le refus du compte désactivé.
+
+**Limites du chantier :** la confirmation d'adresse par jeton à usage unique, la persistance sécurisée de la confirmation et la gestion d'un changement d'adresse ne sont **pas encore développées**. Aucun endpoint de demande de récupération n'est ouvert. La CI des nouveaux commits et les crash-tests locaux de la compilation/exécution multi-SGBD restent à confirmer. Ne jamais renseigner `email_verified_at` à partir d'une simple saisie d'adresse ou d'une authentification locale.
+
+## Confirmation de boîte mail BO : propriétaire du compte (15/11/2026)
+
+`AdminPasswordResetIdentity` implémente également `EmailVerificationIdentity`. Le module enregistre ce fournisseur sous `symsvel.auth.email_verification_identity`. `confirmEmail(subject, emailHash, now)` exige le contexte `bo`, un compte actif, et une empreinte SHA-256 valide correspondant à **l'adresse actuellement enregistrée**, normalisée en minuscules après `trim`. La mise à jour DBAL conditionnelle renseigne `email_verified_at` uniquement si l'adresse est restée identique et si le compte n'était pas déjà vérifié.
+
+Le service Auth réalise l'appel dans la transaction de consommation du jeton. Le Setup ne vérifie automatiquement aucune adresse ; le premier Admin reste non vérifié jusqu'à confirmation effective. `AdminEmailVerificationTest` couvre le contexte, la mauvaise empreinte, le succès unique, le compte désactivé et une ancienne adresse après changement.
+
+Le parcours d'envoi, les endpoints et les crash-tests multi-SGBD restent à réaliser. CI à confirmer.
+
+## Correctif CI des tests de confirmation (15/11/2026)
+
+Le test `AdminPasswordResetIdentityRecoveryEmailTest` crée désormais sa table `symsvel_admins` dans SQLite en mémoire avant de vérifier le refus de récupération pour un sujet absent : l'adaptateur effectue légitimement une requête DBAL depuis l'ajout de `email_verified_at`. Le test de migration remplace `Table::hasPrimaryKey()` (absent de Doctrine DBAL 4) par `Table::getPrimaryKey() !== null`.
+
+Les tests restent isolés de toute base de projet et ne présupposent plus une table absente. Aucune migration publiée ni logique métier de vérification n'a été modifiée dans cette passe. CI et crash-tests locaux à confirmer.
+
+## Adresse BO éligible à la demande de confirmation (15/11/2026)
+
+`AdminPasswordResetIdentity` fournit désormais `EmailVerificationIdentity::pendingVerificationEmail()` : seul un administrateur actif, dans le contexte `bo`, dont `email_verified_at IS NULL`, peut faire parvenir son adresse actuellement enregistrée au service interne d'envoi Auth. Cela ne vérifie pas automatiquement l'adresse ; seul le parcours de consommation transactionnelle validé précédemment marque la confirmation. Le premier compte créé au Setup reste non vérifié tant qu'il n'a pas réellement consommé un jeton. Tests de refus du mauvais contexte, de la vérification déjà réalisée et du passage non vérifié/vérifié ajoutés.
+
+L'envoi est limité et déclenché par Auth avec Mails/Settings. Aucun contrôleur HTTP n'est ouvert, et la CI de cette passe reste à confirmer.
+
+## Diagnostic des accès GitHub privés dans les CI (15/11/2026)
+
+Le workflow `qa.yml` fournit explicitement le secret GitHub Actions `SYMSVEL_READ_TOKEN` à Composer via `COMPOSER_AUTH` (`github-oauth`). Avant installation, il refuse un secret absent et contrôle en lecture, par l'API GitHub, l'accès aux dépôts privés `symsvel-module-auth`, `symsvel-module-mails` et `symsvel-module-settings`. En cas d'absence, d'expiration ou de permissions insuffisantes, la CI échoue avec un diagnostic explicite **avant** `composer install` plutôt qu'un message générique de Composer. La valeur du jeton n'est jamais affichée. Les runners auto-hébergés ne doivent pas dépendre d'une authentification Composer laissée dans leur cache local.
+
+**Configuration à maintenir :** secret `SYMSVEL_READ_TOKEN` lisible dans chacun des trois dépôts GitHub Actions (ou via une configuration de secrets autorisée), avec droits de lecture sur les dépôts privés requis. Un `GITHUB_TOKEN` standard limité au dépôt du workflow ne suffit pas pour ces dépendances inter-dépôts. Un jeton révoqué ou expiré doit être remplacé dans les secrets GitHub, pas en dur dans `composer.json` ou les logs. CI de ce correctif à confirmer ; aucune modification du runtime.
+
+## Implémentation du bootstrap local de confiance (16/11/2026)
+
+Le premier administrateur `ROLE_DEV` est créé par `InitialAdministratorProvisioner::provision()` uniquement à partir du Setup local contrôlé : l'entité reçoit alors `email_verified_at` sans envoi d'e-mail. Un compte administrateur créé en dehors de cette opération reste non vérifié.
+
+Le parcours `symsvel:admins:bootstrap:stdin` traite aussi une reprise de Setup : après vérification du mot de passe du compte existant, `trustExistingBootstrap()` ne renseigne la date que si l'unique administrateur est `ROLE_DEV`. Aucune réinitialisation de son mot de passe ; le marquage est idempotent. L'ancien bootstrap à payload préparé utilise le même provisioner.
+
+Le test unitaire `InitialAdministratorProvisionerTest` couvre l'état initial non vérifié et la transition explicite et idempotente ; le scénario complet via commandes/Doctrine reste à crash-tester. Les administrateurs invités et le parcours d'activation ne sont **pas encore implémentés**.
+
+## Décision révisée : vérification des adresses administrateur (16/11/2026)
+
+Cette décision remplace la règle du 15/11/2026 qui imposait une confirmation e-mail au premier administrateur du Setup.
+
+- **Premier administrateur / développeur** : le Setup Wizard local est un canal d'initialisation de confiance. L'unique `ROLE_DEV` créé par `symsvel:admins:bootstrap:stdin` doit recevoir un `email_verified_at` renseigné sans envoi de message de confirmation. Cette confiance est limitée strictement au premier bootstrap local, pas aux créations ultérieures, importations ou commandes de gestion courante.
+- **Administrateurs créés ensuite** : la possession de l'adresse sera validée au cours du **même parcours d'invitation et de création initiale du mot de passe**. Pas de double validation (un lien pour l'e-mail puis un autre pour le mot de passe). L'invitation doit être à usage unique, expirante et liée à l'adresse actuelle et au compte ; l'activation et la validation de l'adresse ne sont acquises qu'au succès de ce parcours.
+- **Changement d'adresse** : la vérification précédente doit être annulée ; la nouvelle adresse doit être confirmée avant d'être éligible à la récupération du mot de passe.
+
+Les contrats de persistance et de jetons déjà livrés restent applicables. **État** : cette section documente la décision ; la mise à jour de l'opération de bootstrap et le nouveau parcours d'invitation doivent être réalisés et validés par les tests, CI et crash-tests. Ne pas considérer ce texte comme une preuve que les comportements sont déjà opérationnels.
+
+## Activation d'un administrateur invité (16/11/2026)
+
+`AdminPasswordResetIdentity` implémente `AdminInvitationIdentity` et expose `activateInvitation()`. Auth lui transmet un ID, une empreinte d'adresse et un hash Argon2id au sein de sa transaction DBAL. Admins vérifie que le compte est actif, que son adresse actuelle correspond au jeton et que `email_verified_at` est encore `NULL`, puis actualise **ensemble** le mot de passe et `email_verified_at` au moyen d'un `UPDATE` conditionnel. Le bundle publie l'adaptateur avec le tag `symsvel.auth.admin_invitation_identity`.
+
+Ce contrat ne crée pas encore les comptes invités et ne diffuse aucun e-mail. L'invitation doit être émise uniquement pour un administrateur fraîchement créé et non activé ; les changements d'adresse après activation devront suivre le parcours spécifique de revalidation. CI et crash-tests à confirmer.
+
+## Grande passe : création interne des administrateurs invités (16/11/2026)
+
+Le module Admins possède la création des comptes BO. `PendingAdministratorCreator` valide un **rôle explicitement choisi**, présent dans la table du module Roles via `RoleRepository`, et rejette systématiquement `ROLE_DEV` (exclusif au Setup) et `ROLE_USER` (réservé à App). Le manifeste déclare désormais la dépendance d'installation à Roles, et Composer la dépendance `symsvel-framework/module-roles` en branche `dev`.
+
+La fabrique `Admin::invited()` crée un administrateur avec un hash Argon2id d'un secret aléatoire **jamais partagé**, un `role_code` explicite et `invitation_pending = true`. La migration additive `Version20261116000002` ajoute ce booléen à `symsvel_admins` avec `DEFAULT false` ; les admins historiques et le développeur créé au Setup restent des comptes normaux. Les migrations initiales déjà publiées ne sont pas modifiées.
+
+- `AdminIdentityProvider` refuse l'authentification et l'état actif tant que l'invitation est en attente.
+- `AdminPasswordResetIdentity` refuse la récupération, la modification du mot de passe et la confirmation autonome d'e-mail tant que `invitation_pending` est vrai.
+- L'activation par invitation reste atomique : contrôle `enabled = true`, vérification de l'adresse, mot de passe Argon2id, `email_verified_at` et bascule de `invitation_pending` à `false` dans le même UPDATE. Un administrateur **désactivé** ne peut pas être activé par son lien.
+- `AdministratorInvitationManager` orchestre **en interne** la création côté Admins puis `AdminInvitationDispatch` côté Auth/Mails. Une panne du transport peut laisser un compte en attente ; la méthode `resend()` permet à un appelant interne autorisé de réémettre l'invitation uniquement pour ce compte. Aucune méthode d'émission n'est accessible sans contrôle préalable par le futur endpoint BO.
+
+Couverture ajoutée : rôles protégés, état pending, migration additive, intégration ORM/DBAL de l'invitation jusqu'à l'activation et blocage des voies alternatives. **CI et crash-tests XT multi-SGBD restent à valider.** La couche HTTP authentifiée et ses ACLs, les pages Svelte ainsi que le flux d'envoi complet ne sont pas encore livrés : les services internes ne constituent pas une API d'administration publique.
+
+## API BO sécurisée de création et renvoi des invitations (16/11/2026)
+
+`AdministratorInvitationController` expose deux opérations BO :
+- `POST /apibo/admins/invitations` avec JSON `{"email":"…","role_code":"ROLE_ADMIN","locale":"fr"}`, réponse `201` lorsque le mail a été envoyé ;
+- `POST /apibo/admins/{id}/invitations/resend` avec JSON `{"locale":"fr"}`, réponse `200` après renvoi.
+
+Le contrôleur vérifie **d'abord** le bearer token BO via `AuthenticatedTokenResolver` (jeton actuel, non expiré, non révoqué, sujet activé). Le rôle courant est relu depuis Admins, puis `AclAuthorizer` (module ACLs) vérifie `(resource=admins, action=create)` ou `(resource=admins, action=resend)`. La création exige aussi le droit sur `(resource=roles, action=assign:ROLE_…)`, pour le rôle précis à attribuer ; le renvoi vérifie la même autorisation sur le rôle du destinataire. `ROLE_DEV` passe les ACL et `ROLE_SUPER_ADMIN` passe ces opérations fonctionnelles, conformément aux règles acceptées. Tout autre rôle doit recevoir des affectations ACL **explicites** ; aucune règle par défaut n'est créée.
+
+L'API ne permet jamais d'inviter `ROLE_DEV` ou `ROLE_USER`, ni d'activer directement un compte. Elle ne crée pas de session, ne divulgue jamais de jeton d'invitation, refuse les JSON invalides et limite leur taille, et désactive les caches sur toutes les réponses. Erreurs : `401` non authentifié, `403` droit manquant, `400/415` requête incorrecte, `409` invitation indisponible. La création et l'envoi passent exclusivement par les services existants Admins/Auth/Mails. En cas d'échec du transport mail après création, le compte reste inactif avec `invitation_pending = true` ; le renvoi autorisé sert à le récupérer.
+
+Le manifeste et Composer déclarent la dépendance native à ACLs. La configuration Symfony `security.yaml` du Back ne traduit pas aujourd'hui ces bearer tokens en utilisateurs Symfony : **ne pas substituer un simple `#[IsGranted]`** à la résolution Auth actuelle. Les tests contrôlent les voies d'autorisation et les réponses. **CI et crash-tests multi-SGBD requis** pour valider cette intégration.
+
+### Lecture des invitations en attente (16/11/2026)
+
+`GET /apibo/admins/invitations` retourne `{data: [{id, email, role_code, enabled, created_at}]}` pour les **100 invitations les plus récentes**, triées par date descendante. Ce parcours exige `admins:list` et un jeton BO authentifié : une simple autorisation de créer ou de renvoyer n'autorise pas la lecture des adresses. Les comptes activés n'apparaissent plus ; les comptes désactivés peuvent être affichés, mais le renvoi reste interdit. Les réponses sont `Cache-Control: no-store`. La limite est volontaire ; pagination et filtres seront traités seulement si le besoin est confirmé. Test HTTP de lecture, accès refusé et visibilité ajouté.
+
+### Interface d'invitation BO Svelte (16/11/2026)
+
+La page `/admins` du module remplace le placeholder de CT. Elle utilise `boApi()` pour la création, le renvoi et la lecture sécurisée des invitations ; `currentBo()` contrôle la session. Aucun traitement de token propre au module. Le rôle doit être fourni explicitement, puis vérifié par Roles et ACLs côté backend. Textes externalisés dans le fichier TypeScript `bo/src/lib/modules/admins/invitations.ts`, sélection FR/EN. La CI backend, même verte, ne suffit pas à valider le BO compilé ; crash-tests locaux et validation de l'utilisateur restent nécessaires.
+
+### CI complémentaire Svelte assemblé (16/11/2026)
+
+La CI Admins ajoute un **job indépendant `bo-integration`** sur le runner auto-hébergé. Il récupère le BO hôte en branche `dev`, reproduit les destinations de synchronisation de la route et du fichier TypeScript Admins (sans modifier Tooling), installe les dépendances et exécute `npm run format`, `npm run check`, `npm run lint`, `npm run build` et les tests unitaires Vitest avec Chromium.
+
+Ce job valide les imports `#lib`, les composants synchronisés et la compilation statique dans le BO réel. Le formatage s'effectue **uniquement dans la copie assemblée** pour suivre la convention CI du BO ; il ne modifie ni ne pousse les sources du module. Le chantier n'est pas clôturé par ce job : les appels HTTP sont simulés en tests et les crash-tests locaux utilisateur sont obligatoires. L'accès au BO privé doit être accordé au secret `SYMSVEL_READ_TOKEN`.
+
+## Gestion des comptes BO : CRUD sécurisé (16/11/2026)
+
+\`AdminBoAccessGate\` implémente le contrat partagé \`Acls\Access\BoAccessGate\` pour les modules BO. Il vérifie un bearer Auth \`bo\`, recharge l'administrateur actif et non invité, puis demande à \`AclAuthorizer\` l'action requise. Le refus distingue 401 (authentification) et 403 (ACL). Aucun module client ne doit lire lui-même les tokens.
+
+\`AdministratorAccountController\` expose \`GET /apibo/admins\` (200 comptes récents), \`PATCH /apibo/admins/{id}\` (rôle explicite existant et/ou état \`enabled\`), et \`DELETE /apibo/admins/{id}\`. La création reste **exclusivement le parcours d'invitation** existant, où l'administrateur choisit son propre mot de passe. Le serveur vérifie \`admins:list/update/delete\` et \`roles:assign:<code>\` lorsque le rôle est modifié ou retiré. Le \`ROLE_DEV\` initial et l'acteur lui-même ne sont jamais modifiables ni supprimables. Les changements de rôle et d'état, ainsi que la suppression, révoquent les sessions de la cible dans une transaction DBAL. La suppression invalide aussi les jetons d'invitation encore enregistrés.
+
+Les changements d'adresse restent volontairement exclus de PATCH : ils demandent un parcours de vérification de la nouvelle boîte aux lettres, non encore livré. Toutes les réponses sont \`no-store\`. Les écrans BO doivent utiliser le client natif \`boApi\` et respecter les refus d'ACL. L'API et les écrans restent soumis aux tests/CI et crash-tests réels de XT.
+
+
+### Écran des comptes BO (16/11/2026)
+
+La page `/admins` complète les invitations avec `GET /apibo/admins`, `PATCH /apibo/admins/{id}` et `DELETE /apibo/admins/{id}` via `boApi` ; le développeur initial et le compte courant ne sont pas modifiables dans l'UI, en complément des contrôles stricts côté serveur. L'édition porte sur rôle et état actif, jamais sur une adresse qui requerrait une nouvelle vérification. Les textes sont externalisés et un test protège l'interdiction de modifier le développeur ou soi-même. CI BO et CT XT à valider.
+
+### Transactions uniques Auth / Admins (16/11/2026)
+
+Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désormais `TokenSessionRevoker::revokeWith()` comme **unique propriétaire de transaction** : modification du compte et révocation des sessions dans le même `DbalTokenStore`. Cela évite une transaction DBAL extérieure au verrou SQLite du TokenStore, tout en conservant le rollback sur erreur et les contrôles ACL. Le contrat public `revokeAll()` demeure inchangé. Les crash-tests sur les quatre moteurs et la CI de l'assemblage sont nécessaires avant clôture.
+
+### Tests du CRUD BO Admins (16/11/2026)
+
+`AdministratorAccountControllerTest` démarre Doctrine ORM et Auth DBAL sur SQLite en mémoire, puis vérifie `GET/PATCH/DELETE` avec un résultat `BoAccessGate` strict. Les cas `ROLE_DEV` et auto-modification restent bloqués côté serveur ; une modification du rôle et de l'état révoque les sessions, et la suppression conserve le développeur initial. Les refus de session/ACL retournent 401/403. L'absence de transactions imbriquées SQLite est vérifiée par cette intégration. CI et crash-test XT requis.
+
+### Déclaration de navigation BO (16/11/2026)
+
+Le module fournit `bo/src/lib/modules/admins/navigation.ts`, qui décrit sa page `/admins` avec libellés FR/EN et sa permission `admins:list`. Le dashboard du BO hôte importe les déclarations des modules effectivement installés ; il n'affiche cette entrée que si `GET /apibo/admins` réussit via `boApi`, ce qui vérifie le droit côté PHP avant toute navigation. Aucune route Symfony centrale ni règle d'accès Svelte parallèle n'est créée. Le test `bo/tests/admins.test.ts` valide la déclaration, et la CI de l'assemblage BO doit confirmer l'import. CT XT après mise à jour du BO et des modules.
+
+
+## BO : onglets, modales et tableaux XCore (16/11/2026)
+
+L'écran Admins garde l'autorisation des endpoints existants. L'invitation
+initiale et l'édition d'un compte se font dans `Modal` du BO hôte. L'écran
+affiche deux onglets : comptes activés (hors invitations en attente) et
+invitations en attente. Les invitations gardent leur action de renvoi.
+Les comptes `ROLE_DEV` et le compte courant restent protégés ; le backend
+constitue l'autorité finale sur les ACL.
+
+Les deux listes utilisent le `DataTable` de l'hôte avec recherche, tri,
+page et taille de page 10/20/50/100, sur les données chargées de l'API.
+Les endpoints actuels restent limités à 200 comptes / 100 invitations :
+ce lot rétablit la pagination UI XCore **sans prétendre** fournir une
+pagination serveur pour les très grands volumes. Celle-ci demandera un
+contrat API paginé distinct si le plafond devient limitant.
+
+QA et crash-tests XT nécessaires (onglets, recherche, tri, pagination,
+modales, clavier, invitation et protection du compte développeur).
+
+
+Correctif QA du 16/11/2026 : suppression d'une variable dérivée inutilisée
+pour conserver le contrôle ESLint strict des routes Svelte assemblées.
+
+
+### Sélecteur de rôles réels dans les invitations (16/11/2026)
+
+Le BO n'accepte plus un code de rôle libre dans le formulaire d'invitation
+ou d'édition. `GET /apibo/admins/assignable-roles` consulte réellement
+`RoleRepository` et filtre les codes `ROLE_DEV` et `ROLE_USER` ainsi que
+les rôles que l'acteur ne peut pas attribuer avec l'ACL
+`roles.assign:ROLE_CODE`. L'accès exige `admins:create` ou
+`admins:update` et une identité BO authentifiée.
+
+L'écran Admins consomme ce résultat dans un `select` HTML natif, affiche
+les libellés réels et interdit l'envoi lorsqu'il n'y a aucun rôle autorisé.
+L'endpoint d'invitation et celui de modification **réévaluent** les droits
+indépendamment du sélecteur (TOCTOU et requêtes HTTP forgées). Le cache est
+interdit. Le provider du module déclare ses propres ressources/actions
+au catalogue ACLs. CI et CT XT requis.
+
+
+### Test du sélecteur de rôles attribuables (16/11/2026)
+
+`AssignableAdministratorRolesTest` utilise un vrai dépôt ORM Role et
+SQLite pour vérifier le refus sans identité, les rôles limités à
+`roles.assign:ROLE_EDITOR` pour un acteur ordinaire et la visibilité des
+rôles BO existants (hors DEV/USER) pour le développeur. Une API falsifiée
+ne suffit pas : l'endpoint de création réapplique sa validation ACL.
+
+
+### Protection de l'attribution du super-administrateur (16/11/2026)
+
+Le droit `roles.assign:ROLE_SUPER_ADMIN` est déclaré **technique** dans
+Roles. Toutes les voies d'administration respectent ce caractère :
+`GET /apibo/admins/assignable-roles`, invitation, renvoi, modification
+et suppression des comptes. Le super-administrateur dispose de droits
+fonctionnels natifs, **pas** du droit automatique d'inviter ou modifier
+un autre super-administrateur. Une autorisation technique explicite est
+nécessaire ; `ROLE_DEV` garde son exception native validée.
+
+L'édition d'un compte exige aussi l'autorisation d'attribuer son **rôle
+actuel**, afin d'empêcher un opérateur de désactiver ou rétrograder un
+compte plus privilégié que lui. L'API reste l'autorité finale. Le test
+SQLite du sélecteur confirme les deux états (sans/avec grant technique).
+
+
+### Test HTTP de l'attribution SUPER_ADMIN (16/11/2026)
+
+La suite `AdministratorInvitationHttpTest` crée maintenant un acteur
+`ROLE_SUPER_ADMIN` avec un jeton BO réel de test, et vérifie que
+`admins:create` fonctionnel seul ne suffit **jamais** à inviter un autre
+`ROLE_SUPER_ADMIN`. L'invitation est acceptée seulement après l'ajout
+explicite de `roles.assign:ROLE_SUPER_ADMIN` en base. Le refus n'insère
+aucun compte en attente et n'envoie aucun e-mail.
+
+## Préférence de langue ISO des comptes (17/11/2026)
+
+L'entité Admin possède un champ `language` nullable de quatre caractères maximum, normalisé en minuscules et limité aux codes ISO alphabétiques de 2 à 4 lettres. Une migration additive Doctrine Schema (`Version20261117000001`) ajoute cette colonne à `symsvel_admins` sans clé étrangère ni association Doctrine vers le catalogue natif Languages. Les comptes existants gardent `NULL` ; l'absence de préférence doit être interprétée par le parcours comme un repli vers la langue principale du site, pas comme un code inventé par migration.
+
+**Contrat fonctionnel à terminer :** les créations et modifications doivent valider le code parmi les langues actives exposées par Languages ; si une seule langue est active, masquer le dropdown et imposer côté serveur la langue principale du site. Avec plusieurs langues actives, afficher le sélecteur et persister le code ISO choisi. Pour le premier administrateur, initialiser depuis la langue du navigateur pendant le Setup, sans lecture préalable du catalogue en BDD. Ne pas confondre `language` (préférence du compte) et `locale` (langue d'envoi d'un e-mail).
+
+**État au 17/11 :** le schéma, l'entité, le contrat de validation de Languages, les API BO, les écrans de création/modification et les premiers tests sont reliés sur `dev`. Les codes ISO sont exposés dans les listes et persistés dans les opérations BO, sans FK. Avec une seule langue active, aucun dropdown n'est affiché et le serveur impose la langue principale ; en cas d'indisponibilité du catalogue, les écrans bloquent volontairement la création/modification plutôt que de deviner une langue. La préférence du premier administrateur provient directement d'`Accept-Language` au Setup sans lecture du catalogue. CI, scénario App autonome, état initial de la langue principale du site et crash-tests restent à valider avant clôture.
+
+## Fallback français des libellés d'interface (17/11/2026)
+
+Les libellés intégrés de l'interface sont sélectionnés à partir de la langue d'interface (code ISO du navigateur ou du compte). Lorsque la locale n'a pas de dictionnaire intégré, les libellés français sont utilisés ; l'anglais reste disponible explicitement pour `en`. Le fallback ne modifie ni la langue ISO du site ni celle du compte et n'impose pas l'existence de traductions avant l'installation. Le repli doit être réalisé à la clé lors de l'introduction des dictionnaires dynamiques ; l'éditeur BO des traductions et le chargement fichier/BDD ne sont pas fournis par cette seule correction.
+
+Vérifications : tests de sélection FR/EN/autres locales et tests de build/CI. La validation finale nécessite les crash-tests locaux sur le parcours Setup, BO et App.
+
+## Correction des fixtures de CI Admins (17/11/2026)
+
+Les tests d'intégration `AdministratorAccountControllerTest` et `AdministratorInvitationHttpTest` utilisent désormais de vrais objets `SettingManager` (classe `final`, donc non doublable par PHPUnit), avec le provider natif `LanguagesSettingDefinitionProvider` et une base SQLite en mémoire contenant les paramètres et le catalogue de langues. Les tests d'invitation n'essaient plus de renseigner l'ancien paramètre `auth.bo_invitation_url`, supprimé du registre : les liens sont produits par `AuthPageUrls` à partir du domaine de projet fiable. La fixture configure explicitement `mails.transport=mailpit` et vérifie que l'URL d'activation cible `/auth/activate`.
+
+Cette correction ne modifie aucun contrat de production ni ne réintroduit de paramètre Auth obsolète. La validation requiert la CI du dépôt puis le CT du parcours Setup et d'invitation.
+
+### Origine locale des liens d'invitation en CI (17/11/2026)
+
+La fixture d'invitation configure `AuthPageUrls('dev', 'example.test')`. En développement, le domaine local réservé `.test` produit intentionnellement `http://bo.example.test/auth/activate` ; le test d'intégration vérifie ce schéma HTTP. En production, l'origine par défaut demeure HTTPS. Aucune politique de sécurité ni logique métier n'a été changée : seule l'assertion de test incorrecte a été rectifiée.
+
+### Contrat TypeScript des invitations BO (17/11/2026)
+
+La réponse `GET /apibo/admins/invitations` inclut le champ `language` (code ISO ou `null`). Le type `PendingInvitation` de l'interface BO déclare désormais `language: string | null`, comme le type `BoAdminAccount`. Le renvoi d'une invitation consulte ce champ pour choisir la langue du message, avec fallback sur la langue principale active si la valeur est absente. Le test Vitest du module inclut une fixture typée. Aucun contrat API ni stockage n'est modifié. Validation attendue : CI d'assemblage BO puis CT local.
+
+
+## Dictionnaires BO (18/11/2026)
+
+Les libellés du module Admins sont déclarés dans `bo/src/lib/translations/fr.ts` et `en.ts`, avec des clés relatives au propriétaire. Tooling les installe sous `bo/src/lib/translations/admins/<lang>.ts` et enregistre `bo.admins.<clé>` dans Languages après migrations. Le helper du BO donne priorité aux traductions personnalisées. Tests, CI et CT XT nécessaires avant stabilisation.
+
+### Libellé administrateur du shell
+
+Le libellé d'identité du menu BO, même affiché par le shell natif, est déclaré dans Admins (`bo.admins.account.administrator`). Tooling le publie depuis les dictionnaires BO d'Admins, le shell le résout à la compilation, et Languages le répertorie sous le module propriétaire.
+
+Les assertions de dictionnaires vérifient explicitement les libellés du shell attribués à ce module, en plus de l'alignement des clés FR/EN. Le shell reste un consommateur des traductions et conserve ses fallbacks natifs.
+
+### Fixture DBAL du changement d'adresse personnel (19/11/2026)
+
+`AdminProfileEmailOwnerTest` insère désormais les colonnes `enabled` et
+`invitation_pending` avec `ParameterType::BOOLEAN`, comme les conditions
+SQL du propriétaire BO. Un `false` inséré sans type explicite via PDO
+SQLite peut être enregistré comme chaîne vide, qui ne correspond pas à
+`BOOLEAN 0` dans le `WHERE` : le test signalait alors un faux refus.
+La fixture identifie explicitement le propriétaire comme `ROLE_DEV` et
+vérifie qu'il peut confirmer sa nouvelle adresse, mais qu'un compte
+désactivé, une invitation en attente ou une adresse non vérifiée ne le
+peuvent pas. Aucun contrôle de sécurité ni endpoint de production n'est
+assoupli. La CI doit confirmer la correction, et le CT XT reste requis
+sur les quatre SGBD avec le compte développeur initial.
+
+### Garde de reprise du premier administrateur (19/11/2026)
+
+La commande `symsvel:admins:bootstrap:verify` n'accepte que **l'unique**
+compte initial `ROLE_DEV` actif, hors invitation en attente, dont
+l'adresse a été approuvée par le Setup local. Le compte DEV ne devient
+pas « protégé contre toute modification » : ses changements personnels
+de mot de passe, langue ou e-mail restent autorisés. Seuls les états
+incohérents doivent bloquer la finalisation.
+
+Le parcours de reprise `symsvel:admins:bootstrap:stdin` et
+`InitialAdministratorProvisioner::trustExistingBootstrap()` refusent
+également de réutiliser un compte DEV désactivé ou en attente, même
+lorsque son mot de passe est connu. Ce garde contrôle un état Setup,
+non une permission de gestion des comptes. Les vérifications s'appuient
+sur les champs persistés réels et des tests SQLite ; la CI puis les
+crash-tests XT du Setup restent nécessaires.
+
+## Documentation BO authentifiée (19/11/2026)
+
+Le module natif Admins expose les documents privés assemblés manuellement
+par Tooling depuis `backend/var/symsvel/documentation.json`. Il s'agit
+d'un fichier hors `public/`, jamais importé directement dans les assets
+statiques Svelte. Le catalogue `DocumentationCatalog` relit l'index
+avec checksum et refuse une altération, un lien symbolique ou des
+métadonnées invalides. Les pages sont du texte Markdown, non de l'HTML
+exécuté dans un navigateur.
+
+Deux endpoints de lecture seuls appartiennent à Admins :
+- `GET /apibo/admins/documentation` liste les pages disponibles ;
+- `GET /apibo/admins/documentation/page?id=...` renvoie une page Markdown.
+
+Les deux parcours exigent un jeton Auth Bearer du **contexte BO**, un
+compte existant, activé et hors invitation. Un administrateur ordinaire
+accède aux guides `admin` et `user` ; **seul ROLE_DEV** peut également
+lire les documents `dev` (architecture, tooling et documentation interne).
+Les identifiants demandés par HTTP sont cherchés uniquement dans les
+pages validées de l'index : aucun chemin du navigateur ne devient un
+chemin de fichier. Un identifiant inconnu ou une page de développeur
+non autorisée renvoie `404` ; session invalide `401`, index corrompu
+`503`, requête invalide `400`. Toutes les réponses sont `no-store`.
+
+La commande utilisateur `symsvel documentation:sync` doit être lancée
+volontairement par un mainteneur après installation ou mise à jour des
+modules. **Aucun build documentaire** ni installation MkDocs/Python
+n'intervient pendant Setup, et aucun rôle de maintenance n'est porté
+par Core ou Back. Les tests vérifient l'authentification, la séparation
+des scopes, l'absence de fuite de pages non autorisées, l'invalidation
+d'un compte et l'intégrité du document. Les CT BO et la publication
+réelle du fichier avec Tooling restent nécessaires.
+
+### Écran documentaire Svelte BO (19/11/2026)
+
+La route BO `/documentation` est apportée par Admins ; Tooling en synchronise la source sous `src/lib/modules/admins/routes/`, tandis que le BO hôte ne fournit que le lien du menu administrateur. Les libellés de l'écran sont exposés par les dictionnaires du module (`bo.admins.documentation.*`). Le client `boApi()` récupère l'index autorisé puis une page à la fois, sans copie de Markdown dans les bundles statiques. L'affichage utilise un parseur de blocs minimal (titres, paragraphes, listes, citations, code) et le texte échappé de Svelte, sans `{@html}` ni interpolation de HTML. Les seuls liens actifs sont externes en HTTP(S), ouverts avec `noopener noreferrer`. La CI BO assemblée vérifie maintenant également ce parcours, et l'affichage réel et les permissions demeurent à valider sur XT.
+
+La vérification de l'écran assemblé applique le lint Svelte strict : les boucles de sections et fragments ont des clés stables, et les liens HTTP(S) externes du lecteur sont explicitement exemptés de la résolution de routes internes SvelteKit, avec `rel="noopener noreferrer"`. L'étiquette visuelle du choix de langue du profil est un paragraphe : l'accessibilité du Dropdown repose sur son propre `aria-label`, évitant un label orphelin. La CI doit vérifier l'ensemble, sans changement de comportement Auth ou des ACL.
+
+### Visibilité des notices PHPUnit avant stabilisation (19/11/2026)
+
+Le script Composer de tests affiche dorénavant les notices et les dépréciations propres à PHPUnit, en plus des tests ignorés. Cette modification ne supprime pas les signalements et n'affecte aucune logique du module. Elle permet de qualifier les alertes observées dans la CI Admins et d'identifier leurs corrections avant les CT multi-SGBD.
+
+Les fixtures Doctrine qui configurent `ManagerRegistry::getManagerForClass()` déclarent maintenant explicitement `expects(atLeastOnce())` avant les contraintes d'arguments `with(...)`. Cette migration suit PHPUnit 13 et évite le comportement déprécié qui deviendra invalide en PHPUnit 14. L'affichage des notices propres à PHPUnit est également activé pour qualifier les sept signalements restants, sans désactiver les avertissements.
+
+### Suppression des notices PHPUnit des intégrations (19/11/2026)
+
+Les fixtures `AdministratorAccountControllerTest`, `AdministratorInvitationHttpTest` et `PendingAdministratorCreatorDatabaseTest` utilisent désormais `createStub()` pour les interfaces `ManagerRegistry` et `MailerInterface` lorsqu'aucune attente de nombre d'appels n'est requise. Les tests conservent les réponses configurées et les vérifications effectives des envois via le tableau des messages. Cette distinction `stub`/`mock` suit la sémantique PHPUnit 13 et retire les notices « No expectations were configured » sans masquer les événements PHPUnit ou relâcher les contrôles métier. La CI doit confirmer zéro notice et zéro dépréciation avant les CT XT.

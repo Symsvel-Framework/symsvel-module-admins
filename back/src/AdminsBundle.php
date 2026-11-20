@@ -8,11 +8,25 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Admins\Controller\AdminsPingController;
+use SymSvel\Module\Admins\Controller\AdministratorAccountController;
+use SymSvel\Module\Admins\Controller\AdministratorProfileController;
+use SymSvel\Module\Admins\Controller\AdministratorDocumentationController;
+use SymSvel\Module\Admins\Documentation\DocumentationCatalog;
+use SymSvel\Module\Admins\Access\AdminBoAccessGate;
+use SymSvel\Module\Acls\Access\BoAccessGate;
+use SymSvel\Module\Admins\Controller\AdministratorInvitationController;
+use SymSvel\Module\Admins\Controller\AssignableAdministratorRolesController;
+use SymSvel\Module\Admins\Permission\AdminPermissionProvider;
+use SymSvel\Module\Admins\Auth\AdminIdentityProvider;
+use SymSvel\Module\Admins\Auth\AdminProfileEmailOwner;
+use SymSvel\Module\Admins\Auth\AdminPasswordResetIdentity;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminCommand;
 use SymSvel\Module\Admins\Command\ProvisionInitialAdminFromStdinCommand;
 use SymSvel\Module\Admins\Command\VerifyInitialAdminCommand;
 use SymSvel\Module\Admins\Repository\AdminRepository;
 use SymSvel\Module\Admins\Setup\InitialAdministratorProvisioner;
+use SymSvel\Module\Admins\Service\PendingAdministratorCreator;
+use SymSvel\Module\Admins\Service\AdministratorInvitationManager;
 
 final class AdminsBundle extends AbstractBundle
 {
@@ -21,9 +35,36 @@ final class AdminsBundle extends AbstractBundle
         $builder->register(AdminsPingController::class, AdminsPingController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
-        foreach ([AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class] as $service) {
+        $builder->register(DocumentationCatalog::class, DocumentationCatalog::class)->setAutowired(true);
+        $builder->register(AdministratorDocumentationController::class, AdministratorDocumentationController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AdministratorProfileController::class, AdministratorProfileController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AdministratorAccountController::class, AdministratorAccountController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AdminBoAccessGate::class, AdminBoAccessGate::class)->setAutowired(true);
+        $builder->setAlias(BoAccessGate::class, AdminBoAccessGate::class);
+        $builder->register(AdministratorInvitationController::class, AdministratorInvitationController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+        $builder->register(AssignableAdministratorRolesController::class, AssignableAdministratorRolesController::class)
+            ->setAutowired(true)->addTag('controller.service_arguments');
+        $builder->register(AdminPermissionProvider::class, AdminPermissionProvider::class)
+            ->addTag('symsvel.acls.permission_provider');
+        foreach ([AdminIdentityProvider::class, AdminRepository::class, InitialAdministratorProvisioner::class, ProvisionInitialAdminCommand::class, ProvisionInitialAdminFromStdinCommand::class, VerifyInitialAdminCommand::class, PendingAdministratorCreator::class, AdministratorInvitationManager::class] as $service) {
             $builder->register($service, $service)->setAutowired(true)->setAutoconfigured(true);
         }
+        $builder->getDefinition(AdminIdentityProvider::class)->addTag('symsvel.auth.identity_provider');
+        $builder->register(AdminProfileEmailOwner::class, AdminProfileEmailOwner::class)
+            ->setAutowired(true)->addTag('symsvel.auth.profile_email_owner');
+        $builder->register(AdminPasswordResetIdentity::class, AdminPasswordResetIdentity::class)
+            ->setAutowired(true)
+            ->addTag('symsvel.auth.password_reset_identity')
+            ->addTag('symsvel.auth.email_verification_identity')
+            ->addTag('symsvel.auth.admin_invitation_identity');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void

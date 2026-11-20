@@ -1,7 +1,11 @@
 {
     "schema": 1,
     "name": "Admins",
-    "dependencies": {},
+    "dependencies": {
+        "roles": "*",
+        "acls": "*",
+        "languages": "*"
+    },
     "tables": [
         "symsvel_admins"
     ],

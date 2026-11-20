@@ -7,7 +7,7 @@ namespace SymSvel\Module\Admins\Setup;
 /** Validates the ephemeral administrator credentials passed by the Setup Wizard. */
 final class BootstrapPayload
 {
-    /** @return array{email: string, password: string} */
+    /** @return array{email: string, password: string, language: ?string} */
     public function parse(string $raw): array
     {
         if ($raw === '' || strlen($raw) >= 8192) {
@@ -27,6 +27,12 @@ final class BootstrapPayload
             || strlen($password) < 12 || strlen($password) > 4096 || str_contains($password, "\0")) {
             throw new \InvalidArgumentException('Invalid administrator credentials.');
         }
-        return ['email' => $email, 'password' => $password];
+        $language = $data['language'] ?? null;
+        if ($language !== null && (!is_string($language)
+            || preg_match('/^[a-z]{2,4}$/D', strtolower(trim($language))) !== 1)) {
+            throw new \InvalidArgumentException('Invalid administrator language.');
+        }
+        return ['email' => $email, 'password' => $password,
+            'language' => $language !== null ? strtolower(trim($language)) : null];
     }
 }

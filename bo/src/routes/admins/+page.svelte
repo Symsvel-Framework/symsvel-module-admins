@@ -1,1 +1,435 @@
-<h1>Page admins</h1>
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import Button from '../../../../components/Button.svelte';
+  import Alert from '../../../../components/Alert.svelte';
+  import Modal from '../../../../components/Modal.svelte';
+  import Dropdown from '../../../../components/Dropdown.svelte';
+  import { languageFlag } from '../../../../components/dropdown';
+  import DataTable from '../../../../components/DataTable.svelte';
+  import type { DataAction, DataColumn, SortOrder } from '../../../../components/data-table';
+  import type { PageSize } from '../../../../components/pagination';
+  import { ApiError } from '../../../../api/client';
+  import { uiLanguage } from '../../../../api/locales';
+  import { boApi } from '../../../../api/session';
+  import { getBoShell } from '../../../../bo/context';
+  import {
+    invitationCopy, isAssignableBoRole, roleIsSelectable, canMaintainBoAdmin,
+    type AssignableRole, type AssignableRolesResponse,
+    type PendingInvitation, type PendingInvitationsResponse, type InvitationCreateResponse,
+    type BoAdminAccount, type BoAdminAccountsResponse
+  } from '../../invitations';
+
+  const shell = getBoShell();
+  let activeTab = $state<'accounts' | 'invitations'>('accounts');
+  let showInvite = $state(false);
+  let editing = $state<BoAdminAccount | null>(null);
+  let email = $state('');
+  let role = $state('');
+  let accountLanguage = $state('');
+  let editLanguage = $state('');
+  let activeLanguages = $state<{ iso_code: string; name: string; primary: boolean }[]>([]);
+  let languagesError = $state('');
+  let newRole = $state('');
+  let newEnabled = $state(true);
+  let busy = $state(false);
+  let refreshing = $state(false);
+  let resending = $state<number | null>(null);
+  let deleting = $state<number | null>(null);
+  let invitations = $state<PendingInvitation[]>([]);
+  let accounts = $state<BoAdminAccount[]>([]);
+  let availableRoles = $state<AssignableRole[]>([]);
+  const roleOptions = $derived(availableRoles.map((item) => ({
+    value: item.code, label: item.label, code: item.code
+  })));
+  const languageOptions = $derived(activeLanguages.map((item) => ({
+    value: item.iso_code, label: item.name, code: item.iso_code.toUpperCase(), icon: languageFlag(item.iso_code)
+  })));
+  let rolesLoading = $state(false);
+  let rolesError = $state('');
+  let currentId = $state<number | null>(null);
+  let error = $state('');
+  let listError = $state('');
+  let message = $state('');
+  let search = $state('');
+  let sortKey = $state<string | null>('email');
+  let sortOrder = $state<SortOrder>('asc');
+  let page = $state(1);
+  let limit = $state<PageSize>(20);
+
+  const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
+  const t = $derived(invitationCopy(language));
+
+  const accountColumns = $derived<DataColumn<BoAdminAccount>[]>([
+    { key: 'email', label: t.email, sortable: true },
+    { key: 'role_code', label: t.role, sortable: true },
+    { key: 'email_verified', label: t.status, format: (v) => v ? t.verified : t.unverified },
+    { key: 'enabled', label: t.state, format: (v) => v ? t.active : t.disabled }
+  ]);
+  const accountActions = $derived<DataAction<BoAdminAccount>[]>([
+    {
+      key: 'edit', label: (row) => canMaintainBoAdmin(row, currentId) ? t.edit : t.protected,
+      disabled: (row) => !canMaintainBoAdmin(row, currentId),
+      onClick: (row) => startEdit(row)
+    },
+    {
+      key: 'delete', variant: 'danger', label: t.delete,
+      disabled: (row) => !canMaintainBoAdmin(row, currentId) || deleting !== null,
+      onClick: (row) => { void deleteAccount(row.id); }
+    }
+  ]);
+  const invitationColumns = $derived<DataColumn<PendingInvitation>[]>([
+    { key: 'email', label: t.email, sortable: true },
+    { key: 'role_code', label: t.role, sortable: true },
+    { key: 'created_at', label: t.date, sortable: true,
+      format: (v) => new Date(String(v)).toLocaleDateString(language) },
+    { key: 'enabled', label: t.state, format: (v) => v ? t.active : t.disabled }
+  ]);
+  const invitationActions = $derived<DataAction<PendingInvitation>[]>([
+    {
+      key: 'resend', label: (row) => resending === row.id ? t.sending : t.resend,
+      disabled: (row) => !row.enabled || resending !== null,
+      onClick: (row) => { void resend(row.id); }
+    }
+  ]);
+
+  const filteredAccounts = $derived(sortRows(
+    accounts.filter((item) => !item.invitation_pending).filter((item) =>
+      `${item.email} ${item.role_code}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+    )
+  ));
+  const filteredInvitations = $derived(sortRows(
+    invitations.filter((item) =>
+      `${item.email} ${item.role_code}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+    )
+  ));
+  const visibleAccounts = $derived(filteredAccounts.slice((page - 1) * limit, page * limit));
+  const visibleInvitations = $derived(filteredInvitations.slice((page - 1) * limit, page * limit));
+
+  function sortRows<T extends {email: string; role_code: string; created_at: string}>(rows: T[]): T[] {
+    return [...rows].sort((a, b) => {
+      const key = sortKey === 'role_code' || sortKey === 'created_at' ? sortKey : 'email';
+      return a[key].localeCompare(b[key], language, { sensitivity: 'base' }) * (sortOrder === 'asc' ? 1 : -1);
+    });
+  }
+
+  function selectTab(tab: 'accounts' | 'invitations'): void {
+    activeTab = tab;
+    search = '';
+    sortKey = 'email';
+    sortOrder = 'asc';
+    page = 1;
+  }
+
+  function explain(cause: unknown): string {
+    if (cause instanceof ApiError) {
+      if (cause.status === 401) {
+        void goto(resolve('/login'), { replaceState: true });
+        return t.session;
+      }
+      if (cause.status === 403) return t.forbidden;
+      if (cause.status === 409) return t.unavailable;
+    }
+    return t.failure;
+  }
+
+  async function refresh(): Promise<void> {
+    refreshing = true;
+    listError = '';
+    try {
+      const [pending, listed] = await Promise.all([
+        boApi<PendingInvitationsResponse>('/apibo/admins/invitations'),
+        boApi<BoAdminAccountsResponse>('/apibo/admins')
+      ]);
+      invitations = Array.isArray(pending.data) ? pending.data : [];
+      accounts = Array.isArray(listed.data) ? listed.data : [];
+    } catch (cause) {
+      listError = cause instanceof ApiError && cause.status === 403 ? t.listForbidden : explain(cause);
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  function selectedLanguage(code: string | null): string {
+    return activeLanguages.length === 1
+      ? (activeLanguages.find((item) => item.primary)?.iso_code ?? activeLanguages[0].iso_code)
+      : (code && activeLanguages.some((item) => item.iso_code === code) ? code
+        : (activeLanguages.find((item) => item.primary)?.iso_code ?? activeLanguages[0]?.iso_code ?? ''));
+  }
+
+  async function loadLanguages(): Promise<void> {
+    languagesError = '';
+    try {
+      const response = await boApi<{ data: { iso_code: string; name: string; primary: boolean }[] }>('/apibo/languages/account-options');
+      activeLanguages = Array.isArray(response.data) ? response.data : [];
+      accountLanguage = selectedLanguage(accountLanguage);
+      editLanguage = selectedLanguage(editLanguage);
+      if (!activeLanguages.length) languagesError = t.failure;
+    } catch (cause) {
+      languagesError = explain(cause);
+      activeLanguages = [];
+    }
+  }
+
+  async function loadRoles(): Promise<void> {
+    rolesLoading = true;
+    rolesError = '';
+    availableRoles = [];
+    try {
+      const response = await boApi<AssignableRolesResponse>('/apibo/admins/assignable-roles');
+      availableRoles = Array.isArray(response.data) ? response.data : [];
+    } catch (cause) {
+      rolesError = explain(cause);
+    } finally {
+      rolesLoading = false;
+    }
+  }
+
+  onMount(() => {
+    currentId = shell.identity?.id ?? null;
+    void refresh();
+    void loadRoles();
+    void loadLanguages();
+  });
+
+  function openInvite(): void {
+    email = '';
+    role = '';
+    accountLanguage = selectedLanguage(null);
+    error = '';
+    showInvite = true;
+    void loadRoles();
+  }
+
+  async function invite(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (busy) return;
+    error = '';
+    message = '';
+    if (!roleIsSelectable(role, availableRoles)) { error = t.invalidRole; return; }
+    busy = true;
+    try {
+      await boApi<InvitationCreateResponse>('/apibo/admins/invitations', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim(), role_code: role.trim(), language: selectedLanguage(accountLanguage), locale: selectedLanguage(accountLanguage).startsWith('fr') ? 'fr' : 'en' })
+      });
+      showInvite = false;
+      message = t.success;
+      selectTab('invitations');
+      await refresh();
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function resend(id: number): Promise<void> {
+    if (resending !== null) return;
+    error = '';
+    message = '';
+    resending = id;
+    try {
+      await boApi<{status: string}>(`/apibo/admins/${id}/invitations/resend`, {
+        method: 'POST', body: JSON.stringify({ locale: (invitations.find((item) => item.id === id)?.language ?? selectedLanguage(null)).startsWith('fr') ? 'fr' : 'en' })
+      });
+      message = t.resent;
+      await refresh();
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      resending = null;
+    }
+  }
+
+  function startEdit(account: BoAdminAccount): void {
+    if (!canMaintainBoAdmin(account, currentId)) return;
+    editing = account;
+    newRole = account.role_code;
+    editLanguage = selectedLanguage(account.language);
+    newEnabled = account.enabled;
+    error = '';
+    message = '';
+    void loadRoles();
+  }
+
+  async function updateAccount(): Promise<void> {
+    if (!editing || busy) return;
+    if (!isAssignableBoRole(newRole)) { error = t.invalidRole; return; }
+    busy = true;
+    error = '';
+    message = '';
+    try {
+      await boApi<{status: string}>('/apibo/admins/' + editing.id, {
+        method: 'PATCH', body: JSON.stringify({ role_code: newRole, enabled: newEnabled, language: selectedLanguage(editLanguage) })
+      });
+      editing = null;
+      message = t.updated;
+      await refresh();
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function deleteAccount(id: number): Promise<void> {
+    if (deleting !== null || !window.confirm(t.confirmDelete)) return;
+    deleting = id;
+    error = '';
+    message = '';
+    try {
+      await boApi<{status: string}>('/apibo/admins/' + id, { method: 'DELETE' });
+      message = t.deleted;
+      await refresh();
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      deleting = null;
+    }
+  }
+</script>
+
+<svelte:head><title>{t.accounts} | SymSvel BO</title></svelte:head>
+<div class="admins-page">
+  <header class="page-heading">
+    <div><h1>{t.accounts}</h1><p>{t.intro}</p></div>
+    <Button type="button" onclick={openInvite}>{t.heading}</Button>
+  </header>
+
+  {#if message}<Alert kind="success">{message}</Alert>{/if}
+  {#if error && !showInvite && !editing}<Alert kind="error">{error}</Alert>{/if}
+  {#if listError}<Alert kind="error">{listError}</Alert>{/if}
+
+  <section class="panel">
+    <div class="section-heading">
+      <div class="tabs" role="tablist" aria-label={t.accounts}>
+        <button type="button" role="tab" id="admins-tab-accounts"
+          aria-selected={activeTab === 'accounts'} aria-controls="admins-panel-accounts"
+          tabindex={activeTab === 'accounts' ? 0 : -1} onclick={() => selectTab('accounts')}>
+          {t.accounts} ({accounts.filter((item) => !item.invitation_pending).length})
+        </button>
+        <button type="button" role="tab" id="admins-tab-invitations"
+          aria-selected={activeTab === 'invitations'} aria-controls="admins-panel-invitations"
+          tabindex={activeTab === 'invitations' ? 0 : -1} onclick={() => selectTab('invitations')}>
+          {t.pending} ({invitations.length})
+        </button>
+      </div>
+      <Button type="button" variant="secondary" onclick={refresh} disabled={refreshing}>{t.reload}</Button>
+    </div>
+    {#if refreshing}<p role="status">{t.loading}</p>{/if}
+    <div id="admins-panel-accounts" role="tabpanel" aria-labelledby="admins-tab-accounts" hidden={activeTab !== 'accounts'}>
+      {#if activeTab === 'accounts'}
+        <DataTable rows={visibleAccounts} columns={accountColumns} actions={accountActions}
+          loading={refreshing} emptyMessage={t.noAccounts}
+          filters={[{ key: 'search', label: t.search, type: 'search', placeholder: t.searchHint }]}
+          filterValues={{ search }}
+          onFilterChange={(_, value) => { search = value; page = 1; }}
+          {sortKey} {sortOrder}
+          onSortChange={(key, order) => { sortKey = key; sortOrder = order; page = 1; }}
+          pagination={{
+            page, limit, total: filteredAccounts.length,
+            onPageChange: (value) => page = value,
+            onLimitChange: (value) => { limit = value; page = 1; }
+          }} />
+      {/if}
+    </div>
+    <div id="admins-panel-invitations" role="tabpanel" aria-labelledby="admins-tab-invitations" hidden={activeTab !== 'invitations'}>
+      {#if activeTab === 'invitations'}
+        <DataTable rows={visibleInvitations} columns={invitationColumns} actions={invitationActions}
+          loading={refreshing} emptyMessage={t.empty}
+          filters={[{ key: 'search', label: t.search, type: 'search', placeholder: t.searchHint }]}
+          filterValues={{ search }}
+          onFilterChange={(_, value) => { search = value; page = 1; }}
+          {sortKey} {sortOrder}
+          onSortChange={(key, order) => { sortKey = key; sortOrder = order; page = 1; }}
+          pagination={{
+            page, limit, total: filteredInvitations.length,
+            onPageChange: (value) => page = value,
+            onLimitChange: (value) => { limit = value; page = 1; }
+          }} />
+      {/if}
+    </div>
+  </section>
+
+  <Modal open={showInvite} title={t.heading} onClose={() => showInvite = false}>
+    <p>{t.intro}</p>
+    {#if error}<Alert kind="error">{error}</Alert>{/if}
+    <form class="modal-form" onsubmit={invite}>
+      <label for="new-admin-email">{t.email}</label>
+      <input id="new-admin-email" type="email" bind:value={email} autocomplete="email" maxlength="254" required />
+      <span class="field-label">{t.role}</span>
+      <Dropdown value={role} options={roleOptions} label={t.role}
+        placeholder={t.chooseRole} onChange={(value) => { role = value; }}
+        disabled={rolesLoading || availableRoles.length === 0 || busy} />
+      <small id="role-help">{t.roleHint}</small>
+      {#if rolesError}<Alert kind="error">{rolesError}</Alert>{/if}
+      {#if !rolesLoading && !rolesError && availableRoles.length === 0}
+        <Alert kind="info">{t.noRoles}</Alert>
+      {/if}
+      {#if activeLanguages.length > 1}
+        <span class="field-label">{t.accountLanguage}</span>
+        <Dropdown value={accountLanguage} options={languageOptions} label={t.accountLanguage}
+          onChange={(value) => { accountLanguage = value; }} disabled={busy} />
+      {/if}
+      {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
+      <div class="modal-actions">
+        <Button type="button" variant="secondary" onclick={() => showInvite = false}>{t.cancel}</Button>
+        <Button type="submit" variant="success" disabled={busy || rolesLoading || activeLanguages.length === 0 || (activeLanguages.length > 1 && !accountLanguage) || !roleIsSelectable(role, availableRoles)}>{busy ? t.sending : t.send}</Button>
+      </div>
+    </form>
+  </Modal>
+
+  <Modal open={editing !== null} title={t.edit} onClose={() => editing = null}>
+    {#if editing}
+      <p>{editing.email}</p>
+      {#if error}<Alert kind="error">{error}</Alert>{/if}
+      <form class="modal-form" onsubmit={(event) => { event.preventDefault(); void updateAccount(); }}>
+        <span class="field-label">{t.role}</span>
+        <Dropdown value={newRole}
+          options={roleIsSelectable(newRole, availableRoles) ? roleOptions : [
+            { value: newRole, label: newRole },
+            ...roleOptions
+          ]} label={t.role} onChange={(value) => { newRole = value; }}
+          disabled={rolesLoading || busy} />
+        {#if activeLanguages.length > 1}
+          <span class="field-label">{t.accountLanguage}</span>
+          <Dropdown value={editLanguage} options={languageOptions} label={t.accountLanguage}
+            onChange={(value) => { editLanguage = value; }} disabled={busy} />
+        {/if}
+        {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
+        <span class="field-label">{t.state}</span>
+        <Dropdown value={newEnabled ? '1' : '0'}
+          options={[{ value: '1', label: t.active }, { value: '0', label: t.disabled }]}
+          label={t.state} onChange={(value) => { newEnabled = value === '1'; }}
+          disabled={busy} />
+        <div class="modal-actions">
+          <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
+          <Button type="submit" variant="success" disabled={busy || activeLanguages.length === 0 || (activeLanguages.length > 1 && !editLanguage) || !newRole}>{t.save}</Button>
+        </div>
+      </form>
+    {/if}
+  </Modal>
+</div>
+
+<style>
+  .admins-page { max-width: 1200px; margin: auto; display: grid; gap: 20px; }
+  .page-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .page-heading h1 { margin: 0; }
+  .page-heading p { color: var(--bo-muted); }
+  .panel { background: var(--bo-surface); color: var(--bo-text); padding: 24px; border: 1px solid var(--bo-border); border-radius: 14px; min-width: 0; }
+  .section-heading { margin-bottom: 20px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--bo-border); }
+  .tabs button { padding: 12px; border: 0; border-bottom: 3px solid transparent;
+    background: transparent; font: inherit; cursor: pointer; color: var(--bo-muted); }
+  .tabs button[aria-selected="true"] { border-bottom-color: var(--bo-primary); color: var(--bo-text); font-weight: 700; }
+  .tabs button:focus-visible { outline: 2px solid var(--bo-primary); outline-offset: -2px; }
+  .modal-form { display: grid; gap: 10px; margin-top: 15px; }
+  .modal-form label, .field-label { font-weight: 650; }
+  .field-label { display: block; }
+  .modal-form input { width: 100%; min-width: 0; padding: 11px; border: 1px solid var(--bo-border); border-radius: 8px; font: inherit; background: var(--bo-input); color: var(--bo-text); }
+  .modal-form input:focus-visible { outline: 2px solid var(--bo-focus); outline-offset: 2px; }
+  .modal-form small { color: var(--bo-muted); }
+  .modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+</style>
