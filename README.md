@@ -9,9 +9,12 @@ After database creation and native migrations, the local two-phase Setup Wizard 
 
 The older `symsvel:admins:bootstrap` command remains available for the historical staged setup path. MySQL, MariaDB, SQLite, 2FA and i18n are not covered by this change. Automated tests, CI and XT crash tests are required before this work is considered complete.
 
-## CI (10/11/2026)
+## Intégration continue GitHub-hosted (22/11/2026)
 
-`.github/workflows/qa.yml` exécute Composer et les tests du module sur le runner Docker ARM64 d'organisation (`self-hosted`, `linux`, `ARM64`, `symsvel`), avec PHP 8.4 préinstallé. La CI GitHub-hosted originale est conservée et désactivée dans `.github/workflows/qa.yml.stub`. Pour revenir aux runners GitHub, restaurer ce `.stub` sous le nom `qa.yml`. Les jobs locaux nécessitent que le Mac et Docker soient disponibles ; runner réservé aux contributions de confiance. Validation finale soumise à une CI verte et aux crash-tests XT applicables.
+Le workflow actif `.github/workflows/qa.yml` s'exécute désormais sur **GitHub-hosted Ubuntu 24.04**, sans runner Docker local. Les tests Composer/PHP 8.4 et l'intégration BO SvelteKit/Node.js 24 sont conservés, avec Chromium et ses dépendances système. L'ancien `qa.yml.stub`, lorsqu'il existe, est une archive inactive.
+
+Les runners auto-hébergés restent réservés aux dépôts privés `symsvel-packages` et `symsvel-recipes`. Les crash-tests locaux restent requis indépendamment de la CI.
+
 
 ## Migrations natives (chantier DBAL)
 
