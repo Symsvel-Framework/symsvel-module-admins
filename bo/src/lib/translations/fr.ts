@@ -90,7 +90,7 @@ export default {
     "passwordSave": "Modifier mon mot de passe",
     "passwordInvalid": "Vérifiez le mot de passe actuel et saisissez un nouveau mot de passe différent.",
     "passwordMismatch": "Les deux nouveaux mots de passe ne correspondent pas.",
-    "passwordLength": "12 caractères minimum.",
+    "passwordLength": "Respectez les critères du nouveau mot de passe.",
     "passwordSuccess": "Mot de passe modifié. Reconnexion nécessaire.",
     "singleLanguage": "Une seule langue est disponible pour ce projet.",
     "emailChangeTitle": "Changer mon adresse e-mail",

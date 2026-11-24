@@ -404,3 +404,7 @@ Les fixtures `AdministratorAccountControllerTest`, `AdministratorInvitationHttpT
 ## Branding et sécurité
 
 Les écrans du module lisent le nom public avec `getProjectBrand()` du composant hôte BO et affichent `$brandName`. Le layout effectue la requête ; le module ne crée ni état de branding ni requête indépendante. Le nom de repli est géré par l'hôte. L'intégration au composant hôte est vérifiée par la QA ; le CT doit vérifier les en-têtes et titres avec un nom de projet personnalisé. La QA PHP exécute également `composer audit --locked` après installation, sans exclusion d'avis.
+
+## Choix d'un nouveau mot de passe
+
+Le profil BO utilise `PasswordFeedback` de l'hôte, avec les cinq critères réactifs et la force indicative. La modification de mot de passe et le payload initial de création d'administrateur utilisent `Auth\\Identity\\NewPasswordPolicy` : 12 caractères Unicode minimum, majuscule, minuscule, chiffre, symbole ou ponctuation, maximum 1024 octets UTF-8 et sans NUL. Le mot de passe actuel reste vérifié par son hash, sans appliquer rétroactivement la nouvelle règle. Les critères sont vérifiés avant l'écriture et la révocation des sessions. Tests et CT requis.

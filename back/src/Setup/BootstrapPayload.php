@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SymSvel\Module\Admins\Setup;
 
+use SymSvel\Module\Auth\Identity\NewPasswordPolicy;
+
 /** Validates the ephemeral administrator credentials passed by the Setup Wizard. */
 final class BootstrapPayload
 {
@@ -24,7 +26,7 @@ final class BootstrapPayload
         }
         $email = trim($email);
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254
-            || strlen($password) < 12 || strlen($password) > 4096 || str_contains($password, "\0")) {
+            || !NewPasswordPolicy::accepts($password)) {
             throw new \InvalidArgumentException('Invalid administrator credentials.');
         }
         $language = $data['language'] ?? null;

@@ -90,7 +90,7 @@ export default {
     "passwordSave": "Change my password",
     "passwordInvalid": "Check your current password and enter a different new password.",
     "passwordMismatch": "The two new passwords do not match.",
-    "passwordLength": "At least 12 characters.",
+    "passwordLength": "Meet the new password requirements.",
     "passwordSuccess": "Password changed. Sign in again.",
     "singleLanguage": "Only one language is available for this project.",
     "emailChangeTitle": "Change my email address",

@@ -14,10 +14,10 @@ final class BootstrapPayloadTest extends TestCase
     {
         $payload = (new BootstrapPayload())->parse(json_encode([
             'email' => ' developer@example.test ',
-            'password' => 'a-long-secret-password',
+            'password' => 'A-long-secret-password-1!',
         ], JSON_THROW_ON_ERROR));
         self::assertSame('developer@example.test', $payload['email']);
-        self::assertSame('a-long-secret-password', $payload['password']);
+        self::assertSame('A-long-secret-password-1!', $payload['password']);
     }
 
     #[DataProvider('invalidPayloads')]
@@ -35,9 +35,10 @@ final class BootstrapPayloadTest extends TestCase
         yield 'JSON scalar' => ['true'];
         yield 'missing password' => ['{"email":"dev@example.test"}'];
         yield 'bad email' => ['{"email":"invalid","password":"long-enough-password"}'];
+        yield 'missing uppercase' => ['{"email":"dev@example.test","password":"long-password-123!"}'];
         yield 'short password' => ['{"email":"dev@example.test","password":"short"}'];
         yield 'null byte' => [json_encode(['email' => 'dev@example.test', 'password' => "long-password\0x"], JSON_THROW_ON_ERROR)];
         yield 'oversized payload' => [str_repeat('x', 8192)];
-        yield 'oversized password' => [json_encode(['email' => 'dev@example.test', 'password' => str_repeat('x', 4097)], JSON_THROW_ON_ERROR)];
+        yield 'oversized password' => [json_encode(['email' => 'dev@example.test', 'password' => 'aB9!'.str_repeat('x', 1021)], JSON_THROW_ON_ERROR)];
     }
 }
