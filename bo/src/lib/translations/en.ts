@@ -1,4 +1,12 @@
 export default {
+  "emailExists": "This email address is already used by an administrator.",
+  "invitationPending": "An invitation already exists for this email address. Check pending invitations to resend it if active.",
+  "roleMissing": "The selected role no longer exists. Refresh the role list.",
+  "languageUnavailable": "The site's primary language is not configured or active. Check the Languages module.",
+  "languageInvalid": "The selected language is no longer available. Refresh the language list.",
+  "invitationNotPending": "This account no longer has an active invitation. Refresh the invitation list.",
+  "invalidRequest": "The submitted information is invalid. Check the form fields.",
+  "conflict": "The operation conflicts with the current data. Refresh the list.",
   "title": "Administrator invitations",
   "dashboard": "Dashboard",
   "heading": "Invite an administrator",

@@ -75,6 +75,7 @@ jobs:
             printf '<script lang="ts">\n  import ModulePage from "#lib/modules/admins/routes/%s/+page.svelte";\n</script>\n<ModulePage />\n' "$route" > "assembled-bo/src/routes/$route/+page.svelte"
           done
           cp bo/tests/documentation.test.ts assembled-bo/tests/admins-documentation.test.ts
+          cp bo/tests/invitation-errors.test.ts assembled-bo/tests/admins-invitation-errors.test.ts
           cat > assembled-bo/src/routes/admins/+page.svelte <<'ROUTE'
           <script lang="ts">
             import ModulePage from '#lib/modules/admins/routes/admins/+page.svelte';

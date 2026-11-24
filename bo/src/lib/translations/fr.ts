@@ -1,4 +1,12 @@
 export default {
+  "emailExists": "Cette adresse e-mail est déjà utilisée par un administrateur.",
+  "invitationPending": "Une invitation existe déjà pour cette adresse e-mail. Consultez les invitations en attente pour la renvoyer si elle est active.",
+  "roleMissing": "Le rôle sélectionné n’existe plus. Actualisez la liste des rôles.",
+  "languageUnavailable": "La langue principale du site n’est pas configurée ou active. Vérifiez le module Languages.",
+  "languageInvalid": "La langue sélectionnée n’est plus disponible. Actualisez la liste des langues.",
+  "invitationNotPending": "Ce compte ne dispose plus d’une invitation active. Actualisez la liste des invitations.",
+  "invalidRequest": "Les informations saisies sont invalides. Vérifiez les champs du formulaire.",
+  "conflict": "L’opération est en conflit avec l’état actuel des données. Actualisez la liste.",
   "title": "Invitations administrateurs",
   "dashboard": "Tableau de bord",
   "heading": "Inviter un administrateur",
