@@ -400,3 +400,7 @@ Les fixtures Doctrine qui configurent `ManagerRegistry::getManagerForClass()` d�
 ### Suppression des notices PHPUnit des intégrations (19/11/2026)
 
 Les fixtures `AdministratorAccountControllerTest`, `AdministratorInvitationHttpTest` et `PendingAdministratorCreatorDatabaseTest` utilisent désormais `createStub()` pour les interfaces `ManagerRegistry` et `MailerInterface` lorsqu'aucune attente de nombre d'appels n'est requise. Les tests conservent les réponses configurées et les vérifications effectives des envois via le tableau des messages. Cette distinction `stub`/`mock` suit la sémantique PHPUnit 13 et retire les notices « No expectations were configured » sans masquer les événements PHPUnit ou relâcher les contrôles métier. La CI doit confirmer zéro notice et zéro dépréciation avant les CT XT.
+
+## Branding et sécurité
+
+Les écrans du module lisent le nom public avec `getProjectBrand()` du composant hôte BO et affichent `$brandName`. Le layout effectue la requête ; le module ne crée ni état de branding ni requête indépendante. Le nom de repli est géré par l'hôte. L'intégration au composant hôte est vérifiée par la QA ; le CT doit vérifier les en-têtes et titres avec un nom de projet personnalisé. La QA PHP exécute également `composer audit --locked` après installation, sans exclusion d'avis.
