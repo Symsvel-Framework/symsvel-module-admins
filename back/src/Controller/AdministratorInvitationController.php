@@ -11,6 +11,7 @@ use SymSvel\Module\Acls\AclAuthorizer;
 use SymSvel\Module\Admins\Entity\Admin;
 use SymSvel\Module\Admins\Repository\AdminRepository;
 use SymSvel\Module\Admins\Service\AdministratorInvitationManager;
+use SymSvel\Module\Admins\Service\InvitationConflict;
 use SymSvel\Module\Auth\Identity\AuthenticatedTokenResolver;
 use SymSvel\Module\Languages\Service\LanguageCatalog;
 
@@ -87,11 +88,20 @@ final readonly class AdministratorInvitationController
 
         try {
             $language = $this->languages->resolveAccountLanguage($requestedLanguage);
+        } catch (\InvalidArgumentException) {
+            return self::response(['error' => ['code' => 'admin_language_invalid']], 400);
+        } catch (\DomainException) {
+            return self::response(['error' => ['code' => 'admin_language_unavailable']], 409);
+        }
+
+        try {
             $id = $this->invitations->invite(
                 $email, $roleCode, $locale, new \DateTimeImmutable('now', new \DateTimeZone('UTC')), $language,
             );
         } catch (\InvalidArgumentException) {
             return self::response(['error' => ['code' => 'invalid_request']], 400);
+        } catch (InvitationConflict $conflict) {
+            return self::response(['error' => ['code' => $conflict->reason]], 409);
         } catch (\DomainException) {
             return self::response(['error' => ['code' => 'invitation_unavailable']], 409);
         }
@@ -124,6 +134,8 @@ final readonly class AdministratorInvitationController
 
         try {
             $this->invitations->resend($id, $locale, new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+        } catch (InvitationConflict $conflict) {
+            return self::response(['error' => ['code' => $conflict->reason]], 409);
         } catch (\DomainException) {
             return self::response(['error' => ['code' => 'invitation_unavailable']], 409);
         }

@@ -400,3 +400,15 @@ Les fixtures Doctrine qui configurent `ManagerRegistry::getManagerForClass()` d�
 ### Suppression des notices PHPUnit des intégrations (19/11/2026)
 
 Les fixtures `AdministratorAccountControllerTest`, `AdministratorInvitationHttpTest` et `PendingAdministratorCreatorDatabaseTest` utilisent désormais `createStub()` pour les interfaces `ManagerRegistry` et `MailerInterface` lorsqu'aucune attente de nombre d'appels n'est requise. Les tests conservent les réponses configurées et les vérifications effectives des envois via le tableau des messages. Cette distinction `stub`/`mock` suit la sémantique PHPUnit 13 et retire les notices « No expectations were configured » sans masquer les événements PHPUnit ou relâcher les contrôles métier. La CI doit confirmer zéro notice et zéro dépréciation avant les CT XT.
+
+## Branding et sécurité
+
+Les écrans du module lisent le nom public avec `getProjectBrand()` du composant hôte BO et affichent `$brandName`. Le layout effectue la requête ; le module ne crée ni état de branding ni requête indépendante. Le nom de repli est géré par l'hôte. L'intégration au composant hôte est vérifiée par la QA ; le CT doit vérifier les en-têtes et titres avec un nom de projet personnalisé. La QA PHP exécute également `composer audit --locked` après installation, sans exclusion d'avis.
+
+## Choix d'un nouveau mot de passe
+
+Le profil BO utilise `PasswordFeedback` de l'hôte, avec les cinq critères réactifs et la force indicative. La modification de mot de passe et le payload initial de création d'administrateur utilisent `Auth\\Identity\\NewPasswordPolicy` : 12 caractères Unicode minimum, majuscule, minuscule, chiffre, symbole ou ponctuation, maximum 1024 octets UTF-8 et sans NUL. Le mot de passe actuel reste vérifié par son hash, sans appliquer rétroactivement la nouvelle règle. Les critères sont vérifiés avant l'écriture et la révocation des sessions. Tests et CT requis.
+
+## Diagnostics d'invitation BO (24/11/2026)
+
+Les conflits métier attendus utilisent `InvitationConflict` (DomainException spécialisée) et des codes publics stables : `admin_email_exists`, `admin_invitation_pending`, `admin_role_missing`, `admin_invitation_not_pending` (409). La résolution de la langue est isolée : `admin_language_unavailable` (409) ou `admin_language_invalid` (400). Le BO utilise `ApiError.code` et `invitationErrorMessage` avec les dictionnaires FR/EN et le fallback de Languages. Les ACL restent contrôlées avant les recherches ; les réponses n'exposent ni exceptions brutes, ni identifiants, ni données privées. Une invitation préexistante n'est ni recréée ni automatiquement renvoyée. La contrainte unique de l'adresse protège également les créations concurrentes. Les erreurs inattendues et celles des API publiques ne sont pas modifiées. Tests d'intégration : doublons actifs et en attente, rôle absent, langue indisponible, renvoi impossible, absence de nouveaux jetons/messages ; test des messages BO et fallback. CI et CT requis.

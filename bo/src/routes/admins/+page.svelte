@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getProjectBrand } from '../../../../branding';
+  const brandName = getProjectBrand();
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -15,7 +17,7 @@
   import { boApi } from '../../../../api/session';
   import { getBoShell } from '../../../../bo/context';
   import {
-    invitationCopy, isAssignableBoRole, roleIsSelectable, canMaintainBoAdmin,
+    invitationCopy, invitationErrorMessage, isAssignableBoRole, roleIsSelectable, canMaintainBoAdmin,
     type AssignableRole, type AssignableRolesResponse,
     type PendingInvitation, type PendingInvitationsResponse, type InvitationCreateResponse,
     type BoAdminAccount, type BoAdminAccountsResponse
@@ -128,8 +130,7 @@
         void goto(resolve('/login'), { replaceState: true });
         return t.session;
       }
-      if (cause.status === 403) return t.forbidden;
-      if (cause.status === 409) return t.unavailable;
+      return invitationErrorMessage(cause.status, cause.code, t);
     }
     return t.failure;
   }
@@ -291,7 +292,7 @@
   }
 </script>
 
-<svelte:head><title>{t.accounts} | SymSvel BO</title></svelte:head>
+<svelte:head><title>{t.accounts} | {$brandName} BO</title></svelte:head>
 <div class="admins-page">
   <header class="page-heading">
     <div><h1>{t.accounts}</h1><p>{t.intro}</p></div>

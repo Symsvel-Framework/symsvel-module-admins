@@ -37,6 +37,14 @@ export function isAssignableBoRole(role: string): boolean {
 
 const copy = {
   fr: {
+    emailExists: "Cette adresse e-mail est déjà utilisée par un administrateur.",
+    invitationPending: "Une invitation existe déjà pour cette adresse e-mail. Consultez les invitations en attente pour la renvoyer si elle est active.",
+    roleMissing: "Le rôle sélectionné n’existe plus. Actualisez la liste des rôles.",
+    languageUnavailable: "La langue principale du site n’est pas configurée ou active. Vérifiez le module Languages.",
+    languageInvalid: "La langue sélectionnée n’est plus disponible. Actualisez la liste des langues.",
+    invitationNotPending: "Ce compte ne dispose plus d’une invitation active. Actualisez la liste des invitations.",
+    invalidRequest: "Les informations saisies sont invalides. Vérifiez les champs du formulaire.",
+    conflict: "L’opération est en conflit avec l’état actuel des données. Actualisez la liste.",
     title: 'Invitations administrateurs', dashboard: 'Tableau de bord',
     heading: 'Inviter un administrateur',
     intro: 'Un lien permettra au destinataire de créer son mot de passe et de confirmer son adresse.',
@@ -61,6 +69,14 @@ const copy = {
     session: 'Session expirée. Reconnectez-vous.', verifying: 'Vérification de la session…'
   },
   en: {
+    emailExists: "This email address is already used by an administrator.",
+    invitationPending: "An invitation already exists for this email address. Check pending invitations to resend it if active.",
+    roleMissing: "The selected role no longer exists. Refresh the role list.",
+    languageUnavailable: "The site's primary language is not configured or active. Check the Languages module.",
+    languageInvalid: "The selected language is no longer available. Refresh the language list.",
+    invitationNotPending: "This account no longer has an active invitation. Refresh the invitation list.",
+    invalidRequest: "The submitted information is invalid. Check the form fields.",
+    conflict: "The operation conflicts with the current data. Refresh the list.",
     title: 'Administrator invitations', dashboard: 'Dashboard',
     heading: 'Invite an administrator',
     intro: 'A link will let the recipient set a password and verify their email address.',
@@ -91,4 +107,23 @@ export function invitationCopy(language: string | null): InvitationCopy {
   return Object.fromEntries(Object.entries(base).map(([key, value]) => [
     key, generatedTranslation(language, 'bo.admins.' + key) ?? value
   ])) as InvitationCopy;
+}
+
+/** Interpret only known API codes, never raw server exception messages. */
+export function invitationErrorMessage(status: number, code: string | undefined, t: InvitationCopy): string {
+  if (status === 403) return t.forbidden;
+  if (status === 409) {
+    switch (code) {
+      case 'admin_email_exists': return t.emailExists;
+      case 'admin_invitation_pending': return t.invitationPending;
+      case 'admin_role_missing': return t.roleMissing;
+      case 'admin_language_unavailable': return t.languageUnavailable;
+      case 'admin_invitation_not_pending': return t.invitationNotPending;
+      case 'invitation_unavailable': return t.unavailable;
+      default: return t.conflict;
+    }
+  }
+  if (status === 400) return code === 'admin_language_invalid' ? t.languageInvalid : t.invalidRequest;
+  if (status === 404 && code === 'invitation_unavailable') return t.unavailable;
+  return t.failure;
 }

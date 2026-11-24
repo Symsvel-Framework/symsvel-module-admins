@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SymSvel\Module\Admins\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use SymSvel\Module\Admins\Entity\Admin;
 use SymSvel\Module\Admins\Repository\AdminRepository;
 use SymSvel\Module\Roles\Entity\Role;
@@ -33,16 +34,23 @@ final readonly class PendingAdministratorCreator
         }
 
         if (!$this->roles->findOneBy(['code' => $roleCode]) instanceof Role) {
-            throw new \DomainException('Unknown administrator role.');
+            throw new InvitationConflict(InvitationConflict::ROLE_MISSING);
         }
-        if ($this->admins->findOneBy(['email' => $email]) !== null) {
-            throw new \DomainException('An administrator already uses this address.');
+        $existing = $this->admins->findOneBy(['email' => $email]);
+        if ($existing instanceof Admin) {
+            throw new InvitationConflict($existing->isInvitationPending()
+                ? InvitationConflict::PENDING : InvitationConflict::EMAIL_EXISTS);
         }
 
         $admin = Admin::invited($email, $roleCode);
         $admin->setLanguage($language);
         $this->entityManager->persist($admin);
-        $this->entityManager->flush();
+        try {
+            $this->entityManager->flush();
+        } catch (UniqueConstraintViolationException) {
+            // The email uniqueness constraint also protects simultaneous invitations.
+            throw new InvitationConflict(InvitationConflict::EMAIL_EXISTS);
+        }
 
         return $admin;
     }

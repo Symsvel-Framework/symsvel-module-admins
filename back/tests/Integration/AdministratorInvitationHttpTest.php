@@ -105,6 +105,35 @@ final class AdministratorInvitationHttpTest extends TestCase
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_admins WHERE invitation_pending = 1'));
     }
 
+    public function testInvitationConflictsExposeSafeActionableCodes(): void
+    {
+        [$controller, $db, $admins, $messages] = $this->fixture();
+        $invite = static fn (string $email, string $role = 'ROLE_ADMIN') => $controller->create(self::request(
+            '/apibo/admins/invitations', self::DEV_TOKEN,
+            ['email' => $email, 'role_code' => $role, 'locale' => 'fr'],
+        ));
+        self::assertSame(201, $invite('pending@example.test')->getStatusCode());
+        foreach ([
+            [$invite('pending@example.test'), 'admin_invitation_pending'],
+            [$invite('developer@example.test'), 'admin_email_exists'],
+            [$invite('new@example.test', 'ROLE_MISSING'), 'admin_role_missing'],
+        ] as [$response, $code]) {
+            self::assertSame(409, $response->getStatusCode());
+            self::assertSame(['error' => ['code' => $code]], json_decode((string) $response->getContent(), true, 8, JSON_THROW_ON_ERROR));
+        }
+        $db->executeStatement("UPDATE symsvel_languages SET active = 0 WHERE iso_code = 'fr'");
+        $response = $invite('new@example.test');
+        self::assertSame(409, $response->getStatusCode());
+        self::assertSame(['error' => ['code' => 'admin_language_unavailable']], json_decode((string) $response->getContent(), true, 8, JSON_THROW_ON_ERROR));
+        $id = (int) $admins->findOneBy(['email' => 'operator@example.test'])->getId();
+        $response = $controller->resend(self::request('/apibo/admins/'.$id.'/invitations/resend', self::DEV_TOKEN, ['locale' => 'fr']), $id);
+        self::assertSame(409, $response->getStatusCode());
+        self::assertSame(['error' => ['code' => 'admin_invitation_not_pending']], json_decode((string) $response->getContent(), true, 8, JSON_THROW_ON_ERROR));
+        self::assertCount(1, $messages);
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_admin_invitations'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_admins WHERE invitation_pending = 1'));
+    }
+
     public function testTokenAndAclMustBothAuthorizeOperations(): void
     {
         [$controller, $db] = $this->fixture();

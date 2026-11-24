@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getProjectBrand } from '../../../../branding';
+  const brandName = getProjectBrand();
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -9,6 +11,8 @@
   import { api, ApiError } from '../../../../api/client';
   import { boApi, logoutBo } from '../../../../api/session';
   import { uiLanguage } from '../../../../api/locales';
+  import { passwordStrength } from '../../../../password/strength';
+  import PasswordFeedback from '../../../../password/PasswordFeedback.svelte';
   import {
     adminProfileCopy, type AdminSelfProfile, type AdminSelfProfileResponse, type ProfileLanguage
   } from '../../profile';
@@ -33,6 +37,7 @@
   let notice = $state('');
   const locale = $derived($uiLanguage ?? 'fr');
   const t = $derived(adminProfileCopy(locale));
+  const passwordPolicy = $derived(passwordStrength(newPassword));
   const options = $derived(languages.map((item) => ({
     value: item.iso_code, label: item.name,
     code: item.iso_code.toUpperCase(), icon: languageFlag(item.iso_code)
@@ -127,8 +132,8 @@
       passwordError = t.passwordMismatch;
       return;
     }
-    if (newPassword.length < 12 || newPassword.length > 1024 || newPassword === currentPassword) {
-      passwordError = t.passwordLength;
+    if (!passwordPolicy.valid || newPassword === currentPassword) {
+      passwordError = newPassword === currentPassword ? t.passwordInvalid : t.passwordLength;
       return;
     }
     passwordBusy = true;
@@ -152,7 +157,7 @@
 
 </script>
 
-<svelte:head><title>{t.title} | SymSvel BO</title></svelte:head>
+<svelte:head><title>{t.title} | {$brandName} BO</title></svelte:head>
 <section class="profile-page">
   <header>
     <h1>{t.title}</h1>
@@ -208,13 +213,13 @@
           bind:value={currentPassword} required disabled={passwordBusy} />
         <label for="admin-password-next">{t.newPassword}</label>
         <input id="admin-password-next" type="password" autocomplete="new-password"
-          bind:value={newPassword} required minlength="12" maxlength="1024" disabled={passwordBusy} />
+          bind:value={newPassword} required maxlength="1024" disabled={passwordBusy} />
+        <PasswordFeedback password={newPassword} />
         <label for="admin-password-confirm">{t.confirmPassword}</label>
         <input id="admin-password-confirm" type="password" autocomplete="new-password"
-          bind:value={confirmPassword} required minlength="12" maxlength="1024" disabled={passwordBusy} />
-        <p class="profile-note">{t.passwordLength}</p>
+          bind:value={confirmPassword} required maxlength="1024" disabled={passwordBusy} />
         <Button type="submit" loading={passwordBusy}
-          disabled={passwordBusy || !currentPassword || newPassword.length < 12 || newPassword !== confirmPassword}>
+          disabled={passwordBusy || !currentPassword || !passwordPolicy.valid || newPassword === currentPassword || newPassword !== confirmPassword}>
           {t.passwordSave}
         </Button>
       </form>

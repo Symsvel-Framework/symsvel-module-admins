@@ -40,7 +40,7 @@ final readonly class AdministratorInvitationManager
         $admin = $this->admins->find($adminId);
         if (!$admin instanceof Admin || !$admin->isEnabled()
             || !$admin->isInvitationPending() || $admin->getEmailVerifiedAt() !== null) {
-            throw new \DomainException('Administrator has no pending invitation.');
+            throw new InvitationConflict(InvitationConflict::NOT_PENDING);
         }
 
         $this->dispatch->dispatch($adminId, $admin->getEmail(), $locale, $now);
