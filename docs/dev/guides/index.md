@@ -17,3 +17,8 @@ Aucune installation ni configuration supplémentaire propre au module. Les rôle
 - POST /apibo/admins/{id}/invitations/resend : renvoyer une invitation.
 
 Utilisez les services et contrôleurs existants plutôt que d'écrire directement dans symsvel_admins. Pour protéger un endpoint métier du BO, utilisez [ACLs](../acls/index.md).
+
+
+## Profil personnel
+
+Le profil BO conserve le shell de son interface. Les informations de compte et le changement d’adresse sont regroupés dans un bloc ; le changement de mot de passe possède un second bloc indépendant. Les deux blocs sont côte à côte si la largeur le permet, puis empilés sur écran étroit. Le choix de langue utilise `/apiopen/languages`, qui respecte `languages.multilingual`, et ne s’affiche que lorsque plusieurs langues sont disponibles. Les parcours de confirmation et de sécurité restent inchangés.

@@ -57,7 +57,7 @@
       const account = await boApi<AdminSelfProfileResponse>('/apibo/admins/profile');
       profile = account.data;
       try {
-        const choices = await api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true });
+        const choices = await api<{ data: ProfileLanguage[] }>('/apiopen/languages', { public: true });
         languages = Array.isArray(choices.data) ? choices.data : [];
       } catch {
         // The personal account remains accessible if the language catalog is unavailable.
@@ -74,7 +74,7 @@
 
   async function save(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (saving || !profile || !options.some((item) => item.value === selected)) return;
+    if (saving || !profile || languages.length < 2 || !options.some((item) => item.value === selected)) return;
     saving = true;
     notice = '';
     error = '';
@@ -167,24 +167,22 @@
   {#if notice}<Alert kind="success">{notice}</Alert>{/if}
   {#if loading}<p role="status">{t.loading}</p>{/if}
   {#if profile}
-    <section class="profile-card">
+    <div class="profile-grid">
+    <section class="profile-card" data-profile-details>
       <dl>
         <div><dt>{t.email}</dt><dd>{profile.email}</dd></div>
         <div><dt>{t.role}</dt><dd>{profile.role_code}</dd></div>
         <div><dt>{t.verification}</dt><dd>{profile.email_verified ? t.verified : t.unverified}</dd></div>
       </dl>
-      <form onsubmit={save}>
+      {#if languages.length > 1}
+      <form data-profile-language onsubmit={save}>
         <p class="field-label">{t.language}</p>
         <Dropdown value={selected} {options} label={t.language}
           disabled={saving || languages.length < 2} onChange={(value) => { selected = value; }} />
-        {#if languages.length > 1}
-          <Button type="submit" loading={saving} disabled={!selected || selected === profile.language || !options.length}>
+          <Button type="submit" variant="success" loading={saving} disabled={!selected || selected === profile.language || !options.length}>
             {t.save}
           </Button>
-        {/if}
       </form>
-      {#if languages.length < 2}
-        <p class="profile-note">{t.singleLanguage}</p>
       {/if}
 
       <div class="profile-separator"></div>
@@ -199,11 +197,12 @@
         <input id="admin-email-password" type="password" autocomplete="current-password"
           bind:value={emailPassword} required disabled={emailBusy} />
         <p class="profile-note">{t.emailChangeHelp}</p>
-        <Button type="submit" loading={emailBusy} disabled={emailBusy || !newEmail || !emailPassword}>
+        <Button type="submit" variant="success" loading={emailBusy} disabled={emailBusy || !newEmail || !emailPassword}>
           {t.sendEmailConfirmation}
         </Button>
       </form>
-      <div class="profile-separator"></div>
+    </section>
+    <section class="profile-card" data-profile-password>
       <form onsubmit={changePassword} autocomplete="off">
         <h2>{t.passwordTitle}</h2>
         {#if passwordError}<Alert kind="error">{passwordError}</Alert>{/if}
@@ -218,21 +217,23 @@
         <label for="admin-password-confirm">{t.confirmPassword}</label>
         <input id="admin-password-confirm" type="password" autocomplete="new-password"
           bind:value={confirmPassword} required maxlength="1024" disabled={passwordBusy} />
-        <Button type="submit" loading={passwordBusy}
+        <Button type="submit" variant="success" loading={passwordBusy}
           disabled={passwordBusy || !currentPassword || !passwordPolicy.valid || newPassword === currentPassword || newPassword !== confirmPassword}>
           {t.passwordSave}
         </Button>
       </form>
     </section>
+    </div>
   {/if}
   <a href={resolve('/dashboard')}>{t.back}</a>
 </section>
 
 <style>
-  .profile-page { max-width: 780px; display: grid; gap: 18px; margin: auto; color: var(--bo-text); }
+  .profile-page { max-width: 1160px; display: grid; gap: 18px; margin: auto; color: var(--bo-text); }
   .profile-page h1 { margin: 0; }
   .profile-page header p, .profile-note { color: var(--bo-muted); }
-  .profile-card { background: var(--bo-surface); border: 1px solid var(--bo-border); border-radius: 14px; padding: 24px; display: grid; gap: 22px; }
+  .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; align-items: start; }
+  .profile-card { min-width: 0; background: var(--bo-surface); border: 1px solid var(--bo-border); border-radius: 14px; padding: 24px; display: grid; gap: 22px; }
   dl { display: grid; gap: 12px; margin: 0; }
   dl div { display: grid; gap: 5px; }
   dt, .field-label { color: var(--bo-muted); font-weight: 650; }
