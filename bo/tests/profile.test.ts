@@ -12,12 +12,11 @@ import { readFileSync } from 'node:fs';
 
 it('does not require account-management ACLs to list personal language preferences', () => {
   const source = readFileSync(new URL('../src/routes/profile/+page.svelte', import.meta.url), 'utf8');
-  expect(source).toContain("'/apiopen/languages/account-options'");
+  expect(source).toContain("'/apiopen/languages'");
   expect(source).toContain('public: true');
   expect(source).not.toContain("'/apibo/languages/account-options'");
 });
 
-import { readFileSync } from 'node:fs';
 
 it('offers email and password changes alongside language, never another account target', () => {
   const source = readFileSync(new URL('../src/routes/profile/+page.svelte', import.meta.url), 'utf8');
@@ -35,4 +34,14 @@ it('provides a public confirmation page in the correct session context', () => {
   expect(source).toContain("'/apibo/auth/profile/email-change/complete'");
   expect(source).toContain('public: true');
   expect(source).toContain('history.replaceState');
+});
+
+it('uses the public language catalog and renders independent responsive panels only with a real language choice', () => {
+  const source = readFileSync(new URL('../src/routes/profile/+page.svelte', import.meta.url), 'utf8');
+  expect(source).toContain("'/apiopen/languages'");
+  expect(source).not.toContain("'/apiopen/languages/account-options'");
+  expect(source).toContain('{#if languages.length > 1}');
+  expect(source).toContain('data-profile-details');
+  expect(source).toContain('data-profile-password');
+  expect(source).not.toContain('class="auth-shell"');
 });

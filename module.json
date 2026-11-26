@@ -11,9 +11,7 @@
     ],
     "components": {
         "back": "back",
-        "bo": "bo",
-        "app": "app",
-        "front": "front"
+        "bo": "bo"
     },
     "documentation": {
         "dev": "docs/dev",

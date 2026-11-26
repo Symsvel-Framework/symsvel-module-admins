@@ -88,8 +88,8 @@ HTTP ni relâchement des contrôles d'identité.
 
 Un administrateur authentifié peut modifier **sa propre** langue même
 s'il ne possède pas les permissions de gérer les utilisateurs ou Languages.
-Le formulaire lit donc les langues actives depuis le catalogue public
-`GET /apiopen/languages/account-options`, déjà utilisé côté App, et non
+Le formulaire lit donc les langues disponibles depuis le catalogue public
+`GET /apiopen/languages`, qui respecte le multilinguisme, et non
 depuis `/apibo/languages/account-options` qui est soumis aux ACL de
 création/édition des comptes. L'écriture demeure protégée par le token BO
 sur `PATCH /apibo/admins/profile`. Ce découplage évite l'escalade des
@@ -216,3 +216,8 @@ L'accès et le rendu sur XT doivent être validés avec les profils
 `ROLE_DEV` et administrateur ordinaire avant clôture.
 
 L'écran Markdown applique un rendu volontairement limité aux titres, paragraphes, listes et blocs de code. Les enrichissements Markdown complexes et les liens internes relatifs restent affichés en texte ; ils ne sont pas interprétés comme des commandes ni insérés en HTML. La documentation de développement n'est pas disponible pour un rôle ordinaire, même si l'utilisateur forge un identifiant de page dans l'URL.
+
+
+## Présentation du profil
+
+Le profil conserve le shell BO et présente deux panneaux distincts : informations personnelles et modification d’adresse à gauche, modification du mot de passe à droite. Sur un écran étroit, ils sont empilés. Le choix de langue n’est visible que si le multilinguisme est activé et que plusieurs langues actives sont disponibles. Les boutons de confirmation utilisent la variante `success` du Design System BO.
